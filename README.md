@@ -11,4 +11,4 @@ jar cfm McLauncher.jar manifest.mf -C bin .
 java -jar McLauncher.jar
 
 # Getdown
-java -jar getdown-launcher-1.8.7.jar
+java -jar getdown-launcher-1.8.7.jar .
