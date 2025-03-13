@@ -33,7 +33,7 @@ public class LauncherUI extends JFrame {
     private List<ModConfig> defaultMods;
 
     public LauncherUI() {
-        setTitle("McLauncher");
+        setTitle("McLauncher1");
         setSize(960, 540);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
