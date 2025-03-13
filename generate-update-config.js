@@ -6,6 +6,8 @@ const crypto = require("crypto");
 
 // Корневая папка, которую будем сканировать (обычно корень проекта)
 const rootDir = process.argv[2] || ".";
+// Вычисляем абсолютный путь для базового каталога
+const absoluteBase = path.resolve(rootDir);
 // Базовый URI, по которому будут доступны файлы (например, ваш GitHub URL)
 const baseUri = process.argv[3] || "https://raw.githubusercontent.com/qpov/McLauncher/main/";
 // Имя выходного XML-файла конфигурации
@@ -39,8 +41,8 @@ function walkDir(dir, fileList = []) {
 function generateConfig() {
     const fileList = walkDir(rootDir);
     let xml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
-    // Указываем базовый путь, например, рабочая директория пользователя (можно изменить при необходимости)
-    xml += `<configuration base="\${user.dir}">\n  <files>\n`;
+    // Не указываем атрибут base – update4j тогда будет использовать рабочую директорию
+    xml += `<configuration>\n  <files>\n`;
     fileList.forEach(file => {
         xml += `    <file uri="${baseUri}${file.path}" path="${file.path}" sha1="${file.sha1}" size="${file.size}" />\n`;
     });
