@@ -7,7 +7,7 @@ const rootDir = process.argv[2] || ".";
 const baseUri = process.argv[3] || "https://raw.githubusercontent.com/qpov/McLauncher/main/";
 const outputFile = process.argv[4] || "update4j-config.xml";
 
-const exclude = [".git", ".gitignore", "update4j-config.xml", "generate-update-config.js"];
+const exclude = [".git", ".gitignore", outputFile, "generate-update-config.js"];
 
 function walkDir(dir, fileList = []) {
     const entries = fs.readdirSync(dir, { withFileTypes: true });
@@ -17,7 +17,7 @@ function walkDir(dir, fileList = []) {
         if (entry.isDirectory()) {
             walkDir(fullPath, fileList);
         } else {
-            const relPath = path.relative(rootDir, fullPath).split(path.sep).join("/");
+            const relPath = path.relative(rootDir, fullPath).replace(/\\/g, "/");
             const fileBuffer = fs.readFileSync(fullPath);
             const hashSum = crypto.createHash("sha1");
             hashSum.update(fileBuffer);
@@ -35,7 +35,7 @@ function generateConfig() {
     let xml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
     xml += `<configuration base="${baseDir}">\n  <files>\n`;
     fileList.forEach(file => {
-        const absPath = path.join(baseDir, file.relPath).replace(/\//g, "\\");
+        const absPath = `${baseDir}/${file.relPath}`.replace(/\\/g, "/");
         xml += `    <file uri="${baseUri}${file.relPath}" path="${absPath}" sha1="${file.sha1}" size="${file.size}" />\n`;
     });
     xml += `  </files>\n</configuration>\n`;
