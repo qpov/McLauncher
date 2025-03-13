@@ -4,6 +4,7 @@ import org.update4j.Configuration;
 import org.update4j.FileMetadata;
 
 import java.io.File;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
@@ -21,32 +22,32 @@ public class AutoUpdater {
         try {
             File logsDir = new File("logs");
             if (!logsDir.exists()) logsDir.mkdirs();
-            FileHandler fileHandler = new FileHandler("logs/autoupdater.log", true);
-            fileHandler.setFormatter(new SimpleFormatter());
-            LOGGER.addHandler(fileHandler);
+            FileHandler fh = new FileHandler("logs/autoupdater.log", true);
+            fh.setFormatter(new SimpleFormatter());
+            LOGGER.addHandler(fh);
             LOGGER.setLevel(Level.ALL);
         } catch (Exception e) {
-            LOGGER.severe("Ошибка инициализации логирования: " + e.getMessage());
+            LOGGER.log(Level.SEVERE, "Ошибка инициализации логирования", e);
         }
     }
 
     public static void checkAndUpdate() {
-        try (InputStreamReader reader = new InputStreamReader(new URL(CONFIG_URL).openStream(), StandardCharsets.UTF_8)) {
-            Configuration config = Configuration.read(reader);
+        try (InputStream remoteConfigStream = new URL(CONFIG_URL).openStream()) {
+            Configuration config = Configuration.read(new InputStreamReader(remoteConfigStream, StandardCharsets.UTF_8));
 
-            boolean needsUpdate = false;
-            for (FileMetadata file : config.getFiles()) {
-                if (file.requiresUpdate()) {
-                    needsUpdate = true;
-                    LOGGER.info("Файл требует обновления: " + file.getPath() + " | SHA-1: " + file.getChecksum());
+            boolean requiresUpdate = false;
+            for (FileMetadata fm : config.getFiles()) {
+                if (fm.requiresUpdate()) {
+                    requiresUpdate = true;
+                    LOGGER.info("Файл требует обновления: " + fm.getPath() + " | SHA-1: " + fm.getChecksum());
                 }
             }
 
-            if (needsUpdate) {
+            if (requiresUpdate) {
                 LOGGER.info("Обновление найдено, начинаем обновление...");
-                boolean restart = config.update();
-                if (restart) {
-                    LOGGER.info("Обновление завершено, требуется перезапуск.");
+                boolean restartRequired = config.update();
+                if (restartRequired) {
+                    LOGGER.info("Обновление завершено, требуется перезапуск приложения.");
                     System.exit(0);
                 } else {
                     LOGGER.info("Обновление завершено, перезапуск не требуется.");
@@ -54,6 +55,7 @@ public class AutoUpdater {
             } else {
                 LOGGER.info("Обновление не требуется.");
             }
+
         } catch (Exception e) {
             LOGGER.log(Level.SEVERE, "Ошибка проверки обновлений", e);
         }
