@@ -9,6 +9,3 @@ jar cfm McLauncher.jar manifest.mf -C bin .
 
 # Тестовый запуск JAR:
 java -jar McLauncher.jar
-
-# generate update config
-node generate-update-config.js . "https://raw.githubusercontent.com/qpov/McLauncher/main/" update4j-config.xml

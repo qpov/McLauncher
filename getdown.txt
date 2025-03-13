@@ -1,0 +1,25 @@
+# Имя приложения
+app.name = McLauncher
+
+# Версия приложения (при каждом обновлении увеличивайте значение)
+app.version = 1.0
+
+# Главный класс приложения
+app.mainclass = com.launcher.LauncherUI
+
+# Аргументы JVM (при необходимости)
+app.jvmargs = -Xms128m -Xmx512m
+
+# Рабочая директория приложения (обычно текущая директория)
+app.home = .
+
+# URL, по которому Getdown будет искать обновления
+download.url.1 = https://raw.githubusercontent.com/qpov/McLauncher/main/
+
+# Папка для кэширования загруженных файлов (можете задать произвольное имя)
+download.cache = cache
+
+# Список файлов, входящих в приложение
+# Укажите все необходимые файлы и папки.
+# Например, если у вас McLauncher.jar, все файлы из папки lib, assets и theme.txt:
+app.files = McLauncher.jar, lib/*.jar, assets/**, theme.txt

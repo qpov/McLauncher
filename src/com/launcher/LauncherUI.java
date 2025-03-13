@@ -754,9 +754,6 @@ public class LauncherUI extends JFrame {
     }
 
     public static void main(String[] args) {
-        // Проверяем обновления (если обновление найдено, лаунчер скачает новые файлы и перезапустится)
-        AutoUpdater.checkAndUpdate();
-    
         SwingUtilities.invokeLater(() -> {
             LauncherUI launcher = new LauncherUI();
             launcher.setVisible(true);
