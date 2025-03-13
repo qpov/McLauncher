@@ -7,25 +7,6 @@
       "download_link": "https://piston-data.mojang.com/v1/objects/a7e5a6024bfd3cd614625aa05629adf760020304/client.jar",
       "allow_custom_mods": true,
       "mods": []
-    },
-    {
-      "name": "Example1",
-      "minecraft_version": "1.21.4",
-      "fabric_version": "0.16.10",
-      "download_link": "https://piston-data.mojang.com/v1/objects/a7e5a6024bfd3cd614625aa05629adf760020304/client.jar",
-      "allow_custom_mods": false,
-      "mods": []
-    },
-    {
-      "name": "Example2",
-      "minecraft_version": "1.21.4",
-      "fabric_version": "0.16.10",
-      "download_link": "https://piston-data.mojang.com/v1/objects/a7e5a6024bfd3cd614625aa05629adf760020304/client.jar",
-      "allow_custom_mods": true,
-      "mods": [
-         { "name": "Mod1", "url": "https://example.com/mod3.jar" },
-         { "name": "Mod2", "url": "https://example.com/mod4.jar" }
-      ]
     }
   ]
 }
