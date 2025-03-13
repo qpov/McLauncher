@@ -3,11 +3,10 @@ package com.launcher;
 import org.update4j.Configuration;
 import org.update4j.FileMetadata;
 
-import java.io.File;
-import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.io.File;
 import java.util.logging.FileHandler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -25,25 +24,23 @@ public class AutoUpdater {
                 logsDir.mkdirs();
             }
             FileHandler fileHandler = new FileHandler("logs/autoupdater.log", true);
-            fileHandler.setFormatter(new java.util.logging.SimpleFormatter());
+            fileHandler.setFormatter(new SimpleFormatter());
             LOGGER.addHandler(fileHandler);
-            LOGGER.setLevel(java.util.logging.Level.ALL);
+            LOGGER.setLevel(Level.ALL);
         } catch (Exception e) {
-            LOGGER.log(java.util.logging.Level.SEVERE, "Ошибка настройки логирования", e);
+            LOGGER.log(Level.SEVERE, "Не удалось настроить логирование", e);
         }
     }
 
     public static void checkAndUpdate() {
-        try (InputStream remoteConfigStream = new URL(CONFIG_URL).openStream();
-             InputStreamReader reader = new InputStreamReader(remoteConfigStream, StandardCharsets.UTF_8)) {
-
+        try (InputStreamReader reader = new InputStreamReader(new URL(CONFIG_URL).openStream(), StandardCharsets.UTF_8)) {
             Configuration config = Configuration.read(reader);
 
             boolean requiresUpdate = false;
-            for (FileMetadata file : config.getFiles()) {
+            for (var file : config.getFiles()) {
                 if (file.requiresUpdate()) {
                     requiresUpdate = true;
-                    LOGGER.info("Файл требует обновления: " + file.getPath());
+                    LOGGER.info("Файл требует обновления: " + file.getPath() + " | SHA-1: " + file.getChecksum());
                 }
             }
 
@@ -61,7 +58,7 @@ public class AutoUpdater {
             }
 
         } catch (Exception e) {
-            LOGGER.log(java.util.logging.Level.SEVERE, "Ошибка проверки обновлений", e);
+            LOGGER.log(Level.SEVERE, "Ошибка проверки обновлений", e);
         }
     }
 
