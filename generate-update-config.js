@@ -33,18 +33,14 @@ function walkDir(dir, fileList = []) {
 
 function generateConfig() {
     const fileList = walkDir(rootDir);
-    // Получаем абсолютный путь к корневой директории и преобразуем его в URI
-    let baseDir = path.resolve(rootDir).replace(/\\/g, "/");
-    if (!baseDir.startsWith("/")) {
-       baseDir = "/" + baseDir;
-    }
-    const baseUriLocal = "file://" + baseDir;
+    // Получаем абсолютный путь к корневой директории, например "A:/Projects/McLauncher"
+    const baseDir = path.resolve(rootDir).replace(/\\/g, "/");
     
     let xml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
-    xml += `<configuration base="${baseUriLocal}">\n  <files>\n`;
+    xml += `<configuration base="${baseDir}">\n  <files>\n`;
     fileList.forEach(file => {
-        // Для каждого файла указываем абсолютный путь, получая его как baseUriLocal + "/" + относительный путь
-        xml += `    <file uri="${baseUriRemote}${file.relPath}" path="${baseUriLocal}/${file.relPath}" sha1="${file.sha1}" size="${file.size}" />\n`;
+        // Для каждого файла указываем абсолютный путь, получая его как baseDir + "/" + относительный путь
+        xml += `    <file uri="${baseUriRemote}${file.relPath}" path="${baseDir}/${file.relPath}" sha1="${file.sha1}" size="${file.size}" />\n`;
     });
     xml += `  </files>\n</configuration>\n`;
     fs.writeFileSync(outputFile, xml);
