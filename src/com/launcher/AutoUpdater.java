@@ -37,18 +37,18 @@ public class AutoUpdater {
 
     public static void checkAndUpdate() {
         try (InputStream remoteConfigStream = new URL(CONFIG_URL).openStream()) {
+            String updatedConfigXml = updatePathsInConfig(remoteConfigStream);
             Configuration config = Configuration.read(
-                new InputStreamReader(remoteConfigStream, StandardCharsets.UTF_8));
-    
+                    new InputStreamReader(new ByteArrayInputStream(updatedConfigXml.getBytes(StandardCharsets.UTF_8)), StandardCharsets.UTF_8));
+
             boolean requiresUpdate = false;
             for (FileMetadata fm : config.getFiles()) {
                 if (fm.requiresUpdate()) {
                     requiresUpdate = true;
-                    LOGGER.info("Файл требует обновления: " + fm.getPath() + 
-                                " | Ожидаемый SHA-1: " + fm.getChecksum());
+                    LOGGER.info("Файл требует обновления: " + fm.getPath() + " | SHA-1: " + fm.getChecksum());
                 }
             }
-    
+
             if (requiresUpdate) {
                 LOGGER.info("Обновление найдено, начинаем обновление...");
                 boolean restartRequired = config.update();
@@ -64,5 +64,31 @@ public class AutoUpdater {
         } catch (Exception e) {
             LOGGER.severe("Ошибка проверки обновлений: " + e);
         }
-    }    
+    }
+
+    private static String updatePathsInConfig(InputStream configStream) throws Exception {
+        DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
+        Document doc = builder.parse(configStream);
+
+        String userDir = System.getProperty("user.dir").replace("\\", "/");
+
+        NodeList fileNodes = doc.getElementsByTagName("file");
+        for (int i = 0; i < fileNodes.getLength(); i++) {
+            Element fileElem = (Element) fileNodes.item(i);
+            String relPath = fileElem.getAttribute("path");
+            if (relPath != null && !relPath.trim().isEmpty()) {
+                File absFile = new File(userDir, relPath).getAbsoluteFile();
+                fileElem.setAttribute("path", absFile.getAbsolutePath().replace("\\", "/"));
+            }
+        }
+        Element root = doc.getDocumentElement();
+        root.setAttribute("base", userDir);
+
+        TransformerFactory tf = TransformerFactory.newInstance();
+        Transformer transformer = tf.newTransformer();
+        transformer.setOutputProperty(OutputKeys.INDENT, "yes");
+        StringWriter writer = new StringWriter();
+        transformer.transform(new DOMSource(doc), new StreamResult(writer));
+        return writer.toString();
+    }
 }
