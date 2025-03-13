@@ -17,13 +17,14 @@ function walkDir(dir, fileList = []) {
         if (entry.isDirectory()) {
             walkDir(fullPath, fileList);
         } else {
+            const absolutePath = path.resolve(fullPath).replace(/\\/g, '/');
             const relPath = path.relative(rootDir, fullPath).replace(/\\/g, '/');
             const fileBuffer = fs.readFileSync(fullPath);
             const hashSum = crypto.createHash("sha1");
             hashSum.update(fileBuffer);
             const hex = hashSum.digest("hex");
             const stats = fs.statSync(fullPath);
-            fileList.push({ relPath, sha1: hex, size: stats.size });
+            fileList.push({ absolutePath, relPath, sha1: hex, size: stats.size });
         }
     }
     return fileList;
@@ -35,8 +36,7 @@ function generateConfig() {
     let xml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
     xml += `<configuration base="${baseDir}">\n  <files>\n`;
     fileList.forEach(file => {
-        const absolutePath = `${baseDir}/${file.relPath}`;
-        xml += `    <file uri="${baseUri}${file.relPath}" path="${absolutePath}" sha1="${file.sha1}" size="${file.size}" />\n`;
+        xml += `    <file uri="${baseUri}${file.relPath}" path="${file.absolutePath}" sha1="${file.sha1}" size="${file.size}" />\n`;
     });
     xml += `  </files>\n</configuration>\n`;
     fs.writeFileSync(outputFile, xml);
