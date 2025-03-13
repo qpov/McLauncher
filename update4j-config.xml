@@ -4647,7 +4647,7 @@
     <file path="servers.json" uri="file:///A:/Projects/McLauncher/servers.json" sha1="7f2807c3ff882866a676ed5b43eb3e306f2ad976" size="320" />
     <file path="src/com/launcher/AutoUpdater.java" uri="file:///A:/Projects/McLauncher/src/com/launcher/AutoUpdater.java" sha1="55e3a1241070870f0b906642e02e481271db4710" size="641" />
     <file path="src/com/launcher/ConfigLoader.java" uri="file:///A:/Projects/McLauncher/src/com/launcher/ConfigLoader.java" sha1="8e45aa32d2ea9a1c646af8c07bfd54f885b4ea0a" size="424" />
-    <file path="src/com/launcher/LauncherUI.java" uri="file:///A:/Projects/McLauncher/src/com/launcher/LauncherUI.java" sha1="7985aa7b9e6505372d5c52359b2ba1ce093749cd" size="41897" />
+    <file path="src/com/launcher/LauncherUI.java" uri="file:///A:/Projects/McLauncher/src/com/launcher/LauncherUI.java" sha1="a9985f85da6d16ce6b9c5a45a23f7188aec765ab" size="41899" />
     <file path="src/com/launcher/ModConfig.java" uri="file:///A:/Projects/McLauncher/src/com/launcher/ModConfig.java" sha1="ae5a9c6e874489da9c4c95b4ff82cbe2afa4af9a" size="103" />
     <file path="src/com/launcher/ServerConfig.java" uri="file:///A:/Projects/McLauncher/src/com/launcher/ServerConfig.java" sha1="17f046ff53e916d6b86a9494899da784607fdb1d" size="288" />
     <file path="src/com/launcher/ServerList.java" uri="file:///A:/Projects/McLauncher/src/com/launcher/ServerList.java" sha1="9c9dd24ef893dc086411251379a6635c1cee16af" size="121" />
