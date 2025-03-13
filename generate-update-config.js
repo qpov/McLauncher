@@ -12,7 +12,7 @@ const baseUri = process.argv[3] || "https://raw.githubusercontent.com/qpov/McLau
 const outputFile = process.argv[4] || "update4j-config.xml";
 
 // Файлы/папки, которые не нужно включать
-const exclude = [".git", ".gitignore", "update4j-config.xml", "launcher.exe"];
+const exclude = [".git", ".gitignore", "update4j-config.xml", "launcher.exe", "19.json"];
 
 function walkDir(dir, fileList = []) {
     const entries = fs.readdirSync(dir, { withFileTypes: true });
