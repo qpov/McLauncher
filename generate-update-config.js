@@ -1,4 +1,3 @@
-// node generate-update-config.js . "https://raw.githubusercontent.com/qpov/McLauncher/main/" update4j-config.xml
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
@@ -7,7 +6,7 @@ const rootDir = process.argv[2] || ".";
 const baseUri = process.argv[3] || "https://raw.githubusercontent.com/qpov/McLauncher/main/";
 const outputFile = process.argv[4] || "update4j-config.xml";
 
-const exclude = [".git", ".gitignore", outputFile, "generate-update-config.js"];
+const exclude = [".git", ".gitignore", "update4j-config.xml", "generate-update-config.js"];
 
 function walkDir(dir, fileList = []) {
     const entries = fs.readdirSync(dir, { withFileTypes: true });
@@ -17,7 +16,7 @@ function walkDir(dir, fileList = []) {
         if (entry.isDirectory()) {
             walkDir(fullPath, fileList);
         } else {
-            const relPath = path.relative(rootDir, fullPath).replace(/\\/g, "/");
+            const relPath = path.relative(rootDir, fullPath).split(path.sep).join("/");
             const fileBuffer = fs.readFileSync(fullPath);
             const hashSum = crypto.createHash("sha1");
             hashSum.update(fileBuffer);
