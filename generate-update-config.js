@@ -1,72 +1,64 @@
-// node generate-update-config.js .
+// node generate-update-config.js
 
-"use strict";
-
+// generate-update-config.js
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 
-// Корневая папка для сканирования; можно передать в качестве параметра, иначе текущая
-const baseDir = process.argv[2] || '.';
+// Базовый URL – если вы хотите использовать GitHub для загрузки обновлений,
+// имейте в виду, что для raw-версии файлов лучше использовать:
+// "https://raw.githubusercontent.com/qpov/McLauncher/main"
+// Здесь используем то, что вы указали:
+const BASE_URL = 'https://raw.githubusercontent.com/qpov/McLauncher/refs/heads/main';
 
-// Функция для вычисления SHA1 хэша файла
-function hashFile(filePath) {
-    return new Promise((resolve, reject) => {
-        const hash = crypto.createHash('sha1');
-        const stream = fs.createReadStream(filePath);
-        stream.on('error', reject);
-        stream.on('data', (chunk) => hash.update(chunk));
-        stream.on('end', () => resolve(hash.digest('hex')));
-    });
+function computeSHA1(filePath) {
+  const data = fs.readFileSync(filePath);
+  return crypto.createHash('sha1').update(data).digest('hex');
 }
 
-// Функция для получения размера файла
-function getFileSize(filePath) {
-    return fs.statSync(filePath).size;
-}
-
-// Рекурсивная функция для сканирования папки
-async function processDirectory(dir) {
-    let files = [];
-    const items = fs.readdirSync(dir);
-    for (const item of items) {
-        const fullPath = path.join(dir, item);
-        const stats = fs.statSync(fullPath);
-        if (stats.isDirectory()) {
-            // Пропускаем папку .git и любые другие нежелательные папки
-            if (item === '.git') continue;
-            const subFiles = await processDirectory(fullPath);
-            files = files.concat(subFiles);
-        } else if (stats.isFile()) {
-            // Пропускаем файлы с расширением .log и сам update4j-config.xml
-            if (item.endsWith('.log') || item === 'update4j-config.xml') continue;
-            // Вычисляем абсолютный путь и формируем URI с префиксом file:///
-            const absolutePath = path.resolve(fullPath).replace(/\\/g, '/');
-            const uri = 'file:///' + absolutePath;
-            const sha1 = await hashFile(fullPath);
-            const size = getFileSize(fullPath);
-            // Можно сохранить и относительный путь (для удобства) – он будет использован как "path"
-            const relativePath = path.relative(baseDir, fullPath).replace(/\\/g, '/');
-            files.push({ path: relativePath, uri: uri, sha1: sha1, size: size });
-        }
+function scanDirectory(dir, baseDir) {
+  let fileList = [];
+  const items = fs.readdirSync(dir);
+  for (const item of items) {
+    // Можно добавить фильтрацию – например, пропускать папку .git и сам файл update4j-config.xml
+    if (item === '.git' || item === 'update4j-config.xml') continue;
+    const fullPath = path.join(dir, item);
+    const stat = fs.statSync(fullPath);
+    if (stat.isDirectory()) {
+      fileList = fileList.concat(scanDirectory(fullPath, baseDir));
+    } else {
+      // Получаем относительный путь с заменой обратных слэшей на прямые
+      const relPath = path.relative(baseDir, fullPath).replace(/\\/g, '/');
+      fileList.push({
+        filePath: fullPath,
+        relPath: relPath,
+        size: stat.size,
+        sha1: computeSHA1(fullPath)
+      });
     }
-    return files;
+  }
+  return fileList;
 }
 
-// Генерация XML файла конфигурации для update4j
-async function generateUpdate4jConfig() {
-    const files = await processDirectory(baseDir);
-    let xml = '<?xml version="1.0" encoding="UTF-8"?>\n';
-    xml += '<configuration>\n  <files>\n';
-    for (const file of files) {
-        xml += `    <file path="${file.path}" uri="${file.uri}" sha1="${file.sha1}" size="${file.size}" />\n`;
-    }
-    xml += '  </files>\n</configuration>\n';
-    fs.writeFileSync('update4j-config.xml', xml, 'utf8');
-    console.log('update4j-config.xml успешно сгенерирован.');
+function generateUpdateConfig() {
+  // Корневая папка – предполагаем, что скрипт запускается из корня проекта
+  const baseDir = process.cwd();
+  const files = scanDirectory(baseDir, baseDir);
+  
+  // Начало XML-файла
+  let xml = `<?xml version="1.0" encoding="UTF-8"?>\n<configuration>\n    <files>\n`;
+  
+  // Для каждого файла добавляем элемент <file>
+  for (const file of files) {
+    xml += `        <file path="${file.relPath}" uri="${BASE_URL}/${file.relPath}" sha1="${file.sha1}" size="${file.size}" />\n`;
+  }
+  
+  // Закрываем теги
+  xml += `    </files>\n</configuration>\n`;
+  
+  // Сохраняем в update4j-config.xml
+  fs.writeFileSync('update4j-config.xml', xml, 'utf8');
+  console.log('update4j-config.xml успешно создан.');
 }
 
-generateUpdate4jConfig().catch(err => {
-    console.error(err);
-    process.exit(1);
-});
+generateUpdateConfig();
