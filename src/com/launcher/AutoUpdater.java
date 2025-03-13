@@ -1,26 +1,24 @@
 package com.launcher;
 
 import org.update4j.Configuration;
+import org.update4j.FileMetadata;
 import org.w3c.dom.*;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.transform.OutputKeys;
-import javax.xml.transform.Transformer;
-import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.*;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
-import java.io.ByteArrayInputStream;
-import java.io.File;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.StringWriter;
+import java.io.*;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.logging.FileHandler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.logging.SimpleFormatter;
 
 public class AutoUpdater {
+
     private static final Logger LOGGER = Logger.getLogger(AutoUpdater.class.getName());
     // URL к удалённой конфигурации update4j (raw‑контент)
     private static final String CONFIG_URL = "https://raw.githubusercontent.com/qpov/McLauncher/main/update4j-config.xml";
@@ -45,29 +43,56 @@ public class AutoUpdater {
     public static void checkAndUpdate() {
         try {
             LOGGER.info("Чтение конфигурации обновления из: " + CONFIG_URL);
-            // Скачиваем удалённую конфигурацию
-            InputStream remoteConfigStream = new URL(CONFIG_URL).openStream();
-            // Преобразуем XML: заменяем относительные пути на абсолютные, используя рабочую директорию пользователя
-            String updatedConfigXml = updatePathsInConfig(remoteConfigStream);
-            // Читаем конфигурацию из обновлённого XML
-            Configuration config = Configuration.read(
-                    new InputStreamReader(
-                            new ByteArrayInputStream(updatedConfigXml.getBytes("UTF-8")), "UTF-8"));
+            // 1) Скачиваем удалённую конфигурацию
+            try (InputStream remoteConfigStream = new URL(CONFIG_URL).openStream()) {
 
-            if (config.requiresUpdate()) {
+                // 2) Преобразуем XML: заменяем относительные пути на абсолютные, используя user.dir
+                String updatedConfigXml = updatePathsInConfig(remoteConfigStream);
+
+                // 3) Читаем конфигурацию из обновлённого XML
+                Configuration config = Configuration.read(
+                        new InputStreamReader(
+                                new ByteArrayInputStream(updatedConfigXml.getBytes(StandardCharsets.UTF_8)),
+                                StandardCharsets.UTF_8));
+
+                // 4) Проверяем, какие файлы нуждаются в обновлении, и логируем
+                List<FileMetadata> allFiles = config.getFiles();
+                boolean anyRequiresUpdate = false;
+                for (FileMetadata fm : allFiles) {
+                    if (fm.requiresUpdate()) {
+                        anyRequiresUpdate = true;
+                        LOGGER.info("Файл требует обновления: " + fm.getPath()
+                                + " | Ожидаемый SHA-1: " + fm.getChecksum());
+                    }
+                }
+
+                if (!anyRequiresUpdate) {
+                    LOGGER.info("Обновление не требуется.");
+                    return;
+                }
+
+                // 5) Вызываем update() в блоке try/catch, чтобы залогировать, если возникнут ошибки
                 LOGGER.info("Обновление найдено, начинаем обновление...");
-                boolean restartRequired = config.update();
+                boolean restartRequired;
+                try {
+                    restartRequired = config.update();
+                } catch (Exception ex) {
+                    // Если при обновлении какого-то файла возникла ошибка — логируем и выходим
+                    LOGGER.log(Level.SEVERE, "Ошибка при обновлении файлов", ex);
+                    return;
+                }
+
+                // 6) Если обновление завершилось без исключений, логируем результат
                 if (restartRequired) {
                     LOGGER.info("Обновление завершено, требуется перезапуск приложения.");
                     System.exit(0);
                 } else {
                     LOGGER.info("Обновление завершено, перезапуск не требуется.");
                 }
-            } else {
-                LOGGER.info("Обновление не требуется.");
             }
+
         } catch (Exception e) {
-            LOGGER.log(Level.SEVERE, "Исключение при проверке обновления", e);
+            LOGGER.log(Level.SEVERE, "Исключение при проверке/выполнении обновления", e);
         }
     }
 
@@ -120,7 +145,6 @@ public class AutoUpdater {
 
     public static void main(String[] args) {
         checkAndUpdate();
-        // Здесь можно запускать остальной код приложения, например:
-        // LauncherUI.launch();
+        // Остальной код (или вызов LauncherUI.main(...)) можно разместить здесь
     }
 }
