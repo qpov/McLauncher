@@ -16,7 +16,7 @@ function walkDir(dir, fileList = []) {
         if (entry.isDirectory()) {
             walkDir(fullPath, fileList);
         } else {
-            const relPath = path.relative(rootDir, fullPath).split(path.sep).join("/");
+            const relPath = path.relative(rootDir, fullPath).replace(/\\/g, "/");
             const fileBuffer = fs.readFileSync(fullPath);
             const hashSum = crypto.createHash("sha1");
             hashSum.update(fileBuffer);
@@ -34,12 +34,12 @@ function generateConfig() {
     let xml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
     xml += `<configuration base="${baseDir}">\n  <files>\n`;
     fileList.forEach(file => {
-        const absPath = `${baseDir}/${file.relPath}`.replace(/\\/g, "/");
-        xml += `    <file uri="${baseUri}${file.relPath}" path="${absPath}" sha1="${file.sha1}" size="${file.size}" />\n`;
+        const absolutePath = `${baseDir}/${file.relPath}`.replace(/\\/g, "/");
+        xml += `    <file uri="${baseUri}${file.relPath}" path="${absolutePath}" sha1="${file.sha1}" size="${file.size}" />\n`;
     });
     xml += `  </files>\n</configuration>\n`;
     fs.writeFileSync(outputFile, xml);
-    console.log(`Файл ${outputFile} успешно сгенерирован.`);
+    console.log(`Файл ${outputFile} сгенерирован успешно.`);
 }
 
 generateConfig();
