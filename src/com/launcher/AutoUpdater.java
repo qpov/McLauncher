@@ -4,10 +4,10 @@ import org.update4j.Configuration;
 import org.update4j.FileMetadata;
 
 import java.io.File;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
-import java.util.List;
 import java.util.logging.FileHandler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -26,8 +26,8 @@ public class AutoUpdater {
             fileHandler.setFormatter(new SimpleFormatter());
             LOGGER.addHandler(fileHandler);
             LOGGER.setLevel(Level.ALL);
-        } catch (Exception e) {
-            LOGGER.log(Level.SEVERE, "Ошибка настройки логирования", e);
+        } catch (IOException e) {
+            LOGGER.log(Level.SEVERE, "Не удалось настроить логирование", e);
         }
     }
 
@@ -35,25 +35,27 @@ public class AutoUpdater {
         try (InputStreamReader reader = new InputStreamReader(new URL(CONFIG_URL).openStream(), StandardCharsets.UTF_8)) {
             Configuration config = Configuration.read(reader);
 
-            boolean needsUpdate = config.getFiles().stream().anyMatch(fm -> {
-                try {
-                    return fm.requiresUpdate();
-                } catch (Exception e) {
-                    LOGGER.log(Level.SEVERE, "Ошибка проверки файла: " + fm.getPath(), e);
-                    return false;
+            boolean needsUpdate = false;
+            for (FileMetadata file : config.getFiles()) {
+                if (file.requiresUpdate()) {
+                    needsUpdate = true;
+                    LOGGER.info("Файл требует обновления: " + file.getPath() + " | SHA-1: " + file.getChecksum());
                 }
-            });
+            }
 
             if (needsUpdate) {
                 LOGGER.info("Обновление найдено, начинаем обновление...");
                 boolean restart = config.update();
-                LOGGER.info("Обновление завершено, " + (restart ? "требуется перезапуск." : "перезапуск не требуется."));
-                if (restart) System.exit(0);
+                if (restart) {
+                    LOGGER.info("Обновление завершено, требуется перезапуск.");
+                    System.exit(0);
+                } else {
+                    LOGGER.info("Обновление завершено, перезапуск не требуется.");
+                }
             } else {
                 LOGGER.info("Обновление не требуется.");
             }
-
-        } catch (Exception e) {
+        } catch (IOException e) {
             LOGGER.log(Level.SEVERE, "Ошибка проверки обновлений", e);
         }
     }

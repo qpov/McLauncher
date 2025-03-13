@@ -10,21 +10,19 @@ const exclude = [".git", ".gitignore", outputFile, "generate-update-config.js"];
 
 function walkDir(dir, fileList = []) {
     const entries = fs.readdirSync(dir, { withFileTypes: true });
-    for (const entry of entries) {
-        if (exclude.includes(entry.name) || entry.name.startsWith(".")) continue;
+    entries.forEach(entry => {
+        if (exclude.includes(entry.name) || entry.name.startsWith(".")) return;
         const fullPath = path.join(dir, entry.name);
         if (entry.isDirectory()) {
             walkDir(fullPath, fileList);
         } else {
             const relPath = path.relative(rootDir, fullPath).replace(/\\/g, "/");
             const fileBuffer = fs.readFileSync(fullPath);
-            const hashSum = crypto.createHash("sha1");
-            hashSum.update(fileBuffer);
-            const hex = hashSum.digest("hex");
+            const sha1 = crypto.createHash("sha1").update(fileBuffer).digest("hex");
             const stats = fs.statSync(fullPath);
             fileList.push({ relPath, sha1: hex, size: stats.size });
         }
-    }
+    });
     return fileList;
 }
 
@@ -36,8 +34,8 @@ function generateConfig() {
         xml += `    <file uri="${baseUri}${file.relPath}" path="${file.relPath}" sha1="${file.sha1}" size="${file.size}" />\n`;
     });
     xml += `  </files>\n</configuration>\n`;
-    fs.writeFileSync(outputFile, xml);
-    console.log(`Файл ${outputFile} сгенерирован успешно.`);
+    fs.writeFileSync("update4j-config.xml", xml);
+    console.log(`Файл update4j-config.xml успешно создан.`);
 }
 
 generateConfig();
