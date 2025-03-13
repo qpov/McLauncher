@@ -4,21 +4,19 @@ const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
 
-// Корневая папка, которую будем сканировать (обычно это корень вашего проекта)
+// Корневая папка, которую будем сканировать (обычно корень проекта)
 const rootDir = process.argv[2] || ".";
-// Базовый URI, по которому будут доступны файлы (например, на GitHub)
+// Базовый URI, по которому будут доступны файлы (например, ваш GitHub URL)
 const baseUri = process.argv[3] || "https://raw.githubusercontent.com/qpov/McLauncher/main/";
-// Имя выходного файла конфигурации
+// Имя выходного XML-файла конфигурации
 const outputFile = process.argv[4] || "update4j-config.xml";
 
-// Список файлов и папок, которые следует исключить
+// Список исключений (файлы/папки, которые не должны попадать в конфигурацию)
 const exclude = [".git", ".gitignore", "update4j-config.xml"];
 
-// Рекурсивная функция для обхода папок
 function walkDir(dir, fileList = []) {
     const entries = fs.readdirSync(dir, { withFileTypes: true });
     for (const entry of entries) {
-        // Исключаем файлы и папки, заданные в списке или начинающиеся с точки
         if (exclude.includes(entry.name) || entry.name.startsWith(".")) continue;
         const fullPath = path.join(dir, entry.name);
         if (entry.isDirectory()) {
@@ -38,13 +36,12 @@ function walkDir(dir, fileList = []) {
     return fileList;
 }
 
-// Генерируем XML-конфигурацию
 function generateConfig() {
     const fileList = walkDir(rootDir);
     let xml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
-    xml += `<configuration baseUri="${baseUri}">\n  <files>\n`;
+    xml += `<configuration>\n  <files>\n`;
     fileList.forEach(file => {
-        xml += `    <file path="${file.path}" sha1="${file.sha1}" size="${file.size}" />\n`;
+        xml += `    <file uri="${baseUri}${file.path}" sha1="${file.sha1}" size="${file.size}" />\n`;
     });
     xml += `  </files>\n</configuration>\n`;
     fs.writeFileSync(outputFile, xml);
