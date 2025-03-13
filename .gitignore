@@ -1,7 +1,7 @@
 .git
 .gitignore
-launcher.exe
 jdk-23
 *.log
+logs
 nickname.txt
 theme.txt
