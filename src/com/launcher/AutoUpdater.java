@@ -43,9 +43,8 @@ public class AutoUpdater {
     public static void checkAndUpdate() {
         try {
             LOGGER.info("Чтение конфигурации обновления из: " + CONFIG_URL);
-            // Скачиваем удалённую конфигурацию
             try (InputStream remoteConfigStream = new URL(CONFIG_URL).openStream()) {
-                // Преобразуем XML: заменяем относительные пути на абсолютные и пересчитываем SHA-1 для локальных файлов
+                // Преобразуем XML: заменяем относительные пути на абсолютные и пересчитываем SHA‑1 для существующих файлов
                 String updatedConfigXml = updatePathsInConfig(remoteConfigStream);
                 // Читаем конфигурацию из обновлённого XML
                 Configuration config = Configuration.read(
@@ -90,18 +89,16 @@ public class AutoUpdater {
     /**
      * Преобразует конфигурационный XML, заменяя значение атрибута "path" для каждого файла
      * на абсолютный путь (на основе рабочей директории пользователя), а также пересчитывает SHA-1
-     * для локальных файлов, если они существуют.
+     * для файлов, если они существуют и не пустые.
      */
     private static String updatePathsInConfig(InputStream configStream) throws Exception {
-        // Создаем парсер XML
         DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
         DocumentBuilder builder = factory.newDocumentBuilder();
         Document doc = builder.parse(configStream);
 
-        // Получаем рабочую директорию пользователя
+        // Рабочая директория пользователя
         String userDir = System.getProperty("user.dir").replace("\\", "/");
 
-        // Обходим все элементы <file>
         NodeList fileNodes = doc.getElementsByTagName("file");
         for (int i = 0; i < fileNodes.getLength(); i++) {
             Element fileElem = (Element) fileNodes.item(i);
@@ -109,26 +106,24 @@ public class AutoUpdater {
             if (relPath == null || relPath.trim().isEmpty()) {
                 continue;
             }
-            // Если путь уже абсолютный – пропускаем
             File fileCandidate = new File(relPath);
             if (!fileCandidate.isAbsolute()) {
-                // Формируем абсолютный путь, объединяя userDir и относительный путь
                 File absFile = new File(userDir, relPath);
                 String absolutePath = absFile.getAbsolutePath().replace("\\", "/");
                 fileElem.setAttribute("path", absolutePath);
-
-                // Если файл существует, пересчитываем SHA-1 и обновляем атрибут
-                if (absFile.exists() && absFile.isFile()) {
+                // Если файл существует и имеет ненулевую длину – пересчитываем SHA-1
+                if (absFile.exists() && absFile.isFile() && absFile.length() > 0) {
                     String sha1 = calculateSHA1(absFile);
                     fileElem.setAttribute("sha1", sha1);
+                } else {
+                    LOGGER.warning("Файл " + absFile.getAbsolutePath() + " не найден или пустой. Оставляю SHA-1 как есть.");
                 }
             }
         }
-        // Обновляем (или удаляем) атрибут base в корневом элементе, чтобы update4j использовал рабочую директорию
+        // Устанавливаем base равным рабочей директории
         Element root = doc.getDocumentElement();
         root.setAttribute("base", userDir);
 
-        // Преобразуем XML обратно в строку
         TransformerFactory tf = TransformerFactory.newInstance();
         Transformer transformer = tf.newTransformer();
         transformer.setOutputProperty(OutputKeys.INDENT, "yes");
@@ -163,7 +158,7 @@ public class AutoUpdater {
 
     public static void main(String[] args) {
         checkAndUpdate();
-        // Запуск основного кода приложения, например:
+        // Здесь можно запустить основной код лаунчера, например:
         // LauncherUI.main(args);
     }
 }
