@@ -29,9 +29,16 @@ function walkDir(dir, fileList = []) {
 
 function generateConfig() {
     const fileList = walkDir(rootDir);
-    const baseDir = path.resolve(rootDir).replace(/\\/g, "/");
+    // Получаем абсолютный путь и преобразуем его в file URI (для Windows получится, например, file:///A:/Projects/McLauncher)
+    let baseDir = path.resolve(rootDir).replace(/\\/g, "/");
+    // Если путь не начинается со слэша, добавляем его (для корректного URI)
+    if (!baseDir.startsWith("/")) {
+       baseDir = "/" + baseDir;
+    }
+    const fileUri = "file://" + baseDir;
+    
     let xml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
-    xml += `<configuration base="${baseDir}">\n  <files>\n`;
+    xml += `<configuration base="${fileUri}">\n  <files>\n`;
     fileList.forEach(file => {
         xml += `    <file uri="${baseUri}${file.relPath}" path="${file.relPath}" sha1="${file.sha1}" size="${file.size}" />\n`;
     });
