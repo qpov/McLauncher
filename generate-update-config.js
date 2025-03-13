@@ -12,7 +12,7 @@ const baseUri = process.argv[3] || "https://raw.githubusercontent.com/qpov/McLau
 const outputFile = process.argv[4] || "update4j-config.xml";
 
 // Список исключений (файлы/папки, которые не должны попадать в конфигурацию)
-const exclude = [".git", ".gitignore", "update4j-config.xml", "launcher.exe", "jdk-23"];  
+const exclude = [".git", ".gitignore", "update4j-config.xml", "launcher.exe"];
 
 function walkDir(dir, fileList = []) {
     const entries = fs.readdirSync(dir, { withFileTypes: true });
@@ -39,9 +39,10 @@ function walkDir(dir, fileList = []) {
 function generateConfig() {
     const fileList = walkDir(rootDir);
     let xml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
-    xml += `<configuration>\n  <files>\n`;
+    // Указываем базовый путь, например, рабочая директория пользователя (можно изменить при необходимости)
+    xml += `<configuration base="\${user.dir}">\n  <files>\n`;
     fileList.forEach(file => {
-        xml += `    <file uri="${baseUri}${file.path}" sha1="${file.sha1}" size="${file.size}" />\n`;
+        xml += `    <file uri="${baseUri}${file.path}" path="${file.path}" sha1="${file.sha1}" size="${file.size}" />\n`;
     });
     xml += `  </files>\n</configuration>\n`;
     fs.writeFileSync(outputFile, xml);
