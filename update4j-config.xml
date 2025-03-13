@@ -4037,7 +4037,7 @@
     <file path="bin/com/launcher/ConfigLoader.class" sha1="763820a14d9d1c5447f572b862526af8a8f12db7" size="871" />
     <file path="bin/com/launcher/LauncherUI$1.class" sha1="f143da24f72a193a0a7e8beb0c15f758a5b2c773" size="1693" />
     <file path="bin/com/launcher/LauncherUI$DownloadTask.class" sha1="9a7f650632557c22f52ca8087c1779308e6cbbf0" size="1572" />
-    <file path="bin/com/launcher/LauncherUI.class" sha1="efcc9f12a37c709442816a072288495aad38663d" size="27506" />
+    <file path="bin/com/launcher/LauncherUI.class" sha1="94d7faf7bb521c48f94ac3c52ca03130e8c4beb4" size="27511" />
     <file path="bin/com/launcher/ModConfig.class" sha1="8a4cd067c82cc637340c8c87e54e9fd7a8af9b4f" size="255" />
     <file path="bin/com/launcher/ServerConfig.class" sha1="1bb5942056586fcb7817d735886c5ce35415cb8b" size="455" />
     <file path="bin/com/launcher/ServerList.class" sha1="261740ae71c7164d46310e2a8e6953d894e9a2dd" size="312" />
@@ -4634,7 +4634,7 @@
     <file path="lib/v1/objects/a7e5a6024bfd3cd614625aa05629adf760020304/client.jar" sha1="a7e5a6024bfd3cd614625aa05629adf760020304" size="28335587" />
     <file path="manifest.mf" sha1="f696f807d8d3d0ff986fca54165a782926d9428d" size="148" />
     <file path="McLauncher.exe" sha1="655e369f00b0f8e7f120d086779084050d8b170d" size="81441" />
-    <file path="McLauncher.jar" sha1="5dddb405ff20260f0bbcc2a39fe4127e23b8877c" size="17953" />
+    <file path="McLauncher.jar" sha1="d61883c327dde4bd7e3e9e35d6d18eb49ed1cf33" size="17958" />
     <file path="native/glfw.dll" sha1="2e19147110b9872a52814956bab151a7aa80ce58" size="496128" />
     <file path="native/jemalloc.dll" sha1="6403f8243ea983a225b3bcda6c821a0029ad9ee2" size="398336" />
     <file path="native/jna2376941260962585108.dll" sha1="27ff882ac271db547aee520b38e3ba9aa91e136c" size="273408" />
@@ -4647,10 +4647,11 @@
     <file path="servers.json" sha1="7f2807c3ff882866a676ed5b43eb3e306f2ad976" size="320" />
     <file path="src/com/launcher/AutoUpdater.java" sha1="01b2b8bae78888c2705ff6c0e3567ec557119051" size="2641" />
     <file path="src/com/launcher/ConfigLoader.java" sha1="8e45aa32d2ea9a1c646af8c07bfd54f885b4ea0a" size="424" />
-    <file path="src/com/launcher/LauncherUI.java" sha1="84bc7a2ef41f08ead8d6d37fa8a84a572f6e5ffb" size="41892" />
+    <file path="src/com/launcher/LauncherUI.java" sha1="7985aa7b9e6505372d5c52359b2ba1ce093749cd" size="41897" />
     <file path="src/com/launcher/ModConfig.java" sha1="ae5a9c6e874489da9c4c95b4ff82cbe2afa4af9a" size="103" />
     <file path="src/com/launcher/ServerConfig.java" sha1="17f046ff53e916d6b86a9494899da784607fdb1d" size="288" />
     <file path="src/com/launcher/ServerList.java" sha1="9c9dd24ef893dc086411251379a6635c1cee16af" size="121" />
     <file path="theme.txt" sha1="4e8aec36dfe1260d66ad1488da1ee90a7c9935a9" size="6" />
+    <file path="update4j-config.xml" sha1="bbd6887e50d6ec8a34b34c2cc66dea18af703638" size="638704" />
   </files>
 </configuration>
