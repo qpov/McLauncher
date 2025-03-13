@@ -599,9 +599,9 @@
     <file uri="https://raw.githubusercontent.com/qpov/McLauncher/main/lib/org/tlauncher/tl_skin_cape_forge_1.21.3_1.21.4/1.35/tl_skin_cape_forge_1.21.3_1.21.4-1.35.jar" path="lib/org/tlauncher/tl_skin_cape_forge_1.21.3_1.21.4/1.35/tl_skin_cape_forge_1.21.3_1.21.4-1.35.jar" sha1="634d7ff0a4a9fa826284a82835754310138dee95" size="949379" />
     <file uri="https://raw.githubusercontent.com/qpov/McLauncher/main/lib/update4j-1.5.9.jar" path="lib/update4j-1.5.9.jar" sha1="cbc53eb5cf5e83cdd05f36c6053b94794a55a422" size="129526" />
     <file uri="https://raw.githubusercontent.com/qpov/McLauncher/main/lib/v1/objects/a7e5a6024bfd3cd614625aa05629adf760020304/client.jar" path="lib/v1/objects/a7e5a6024bfd3cd614625aa05629adf760020304/client.jar" sha1="a7e5a6024bfd3cd614625aa05629adf760020304" size="28335587" />
-    <file uri="https://raw.githubusercontent.com/qpov/McLauncher/main/logs/autoupdater.log" path="logs/autoupdater.log" sha1="97771b6a6ebe7e0e0f89716aa517aa0d42ea5b0f" size="12943" />
+    <file uri="https://raw.githubusercontent.com/qpov/McLauncher/main/logs/autoupdater.log" path="logs/autoupdater.log" sha1="b112baa97a38b96a2d76c653dfa8f918e7c0fb7f" size="15141" />
     <file uri="https://raw.githubusercontent.com/qpov/McLauncher/main/manifest.mf" path="manifest.mf" sha1="f696f807d8d3d0ff986fca54165a782926d9428d" size="148" />
-    <file uri="https://raw.githubusercontent.com/qpov/McLauncher/main/McLauncher.jar" path="McLauncher.jar" sha1="1ef071ada95d9f42ad4ca28a003ab46a90bc2e2f" size="17742" />
+    <file uri="https://raw.githubusercontent.com/qpov/McLauncher/main/McLauncher.jar" path="McLauncher.jar" sha1="0dbb400f3fdd548d8cae9042a77bad115f23932a" size="17742" />
     <file uri="https://raw.githubusercontent.com/qpov/McLauncher/main/native/glfw.dll" path="native/glfw.dll" sha1="2e19147110b9872a52814956bab151a7aa80ce58" size="496128" />
     <file uri="https://raw.githubusercontent.com/qpov/McLauncher/main/native/jemalloc.dll" path="native/jemalloc.dll" sha1="6403f8243ea983a225b3bcda6c821a0029ad9ee2" size="398336" />
     <file uri="https://raw.githubusercontent.com/qpov/McLauncher/main/native/jna2376941260962585108.dll" path="native/jna2376941260962585108.dll" sha1="27ff882ac271db547aee520b38e3ba9aa91e136c" size="273408" />
