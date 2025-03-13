@@ -31,16 +31,16 @@ function walkDir(dir, fileList = []) {
 
 function generateConfig() {
     const fileList = walkDir(rootDir);
-    const baseDir = path.resolve(rootDir);
+    const baseDir = path.resolve(rootDir).replace(/\\/g, "/");
     let xml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
     xml += `<configuration base="${baseDir}">\n  <files>\n`;
     fileList.forEach(file => {
-        const absolutePath = path.resolve(rootDir, file.relPath);
-        xml += `    <file uri="${baseUri}${file.relPath.replace(/\\/g, "/")}" path="${absolutePath}" sha1="${file.sha1}" size="${file.size}" />\n`;
+        const absPath = path.join(baseDir, file.relPath).replace(/\//g, "\\");
+        xml += `    <file uri="${baseUri}${file.relPath}" path="${absPath}" sha1="${file.sha1}" size="${file.size}" />\n`;
     });
     xml += `  </files>\n</configuration>\n`;
     fs.writeFileSync(outputFile, xml);
-    console.log(`Файл ${outputFile} сгенерирован успешно.`);
+    console.log(`Файл ${outputFile} успешно сгенерирован.`);
 }
 
 generateConfig();
