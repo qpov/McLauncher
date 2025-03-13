@@ -4,12 +4,10 @@ import org.update4j.Configuration;
 import org.update4j.FileMetadata;
 
 import java.io.File;
-import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
-import java.util.List;
 import java.util.logging.FileHandler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -27,11 +25,11 @@ public class AutoUpdater {
                 logsDir.mkdirs();
             }
             FileHandler fileHandler = new FileHandler("logs/autoupdater.log", true);
-            fileHandler.setFormatter(new SimpleFormatter());
+            fileHandler.setFormatter(new java.util.logging.SimpleFormatter());
             LOGGER.addHandler(fileHandler);
-            LOGGER.setLevel(Level.ALL);
-        } catch (IOException e) {
-            LOGGER.log(Level.SEVERE, "Не удалось настроить логирование", e);
+            LOGGER.setLevel(java.util.logging.Level.ALL);
+        } catch (Exception e) {
+            LOGGER.log(java.util.logging.Level.SEVERE, "Ошибка настройки логирования", e);
         }
     }
 
@@ -42,11 +40,10 @@ public class AutoUpdater {
             Configuration config = Configuration.read(reader);
 
             boolean requiresUpdate = false;
-            List<FileMetadata> files = config.getFiles();
-            for (FileMetadata file : files) {
+            for (FileMetadata file : config.getFiles()) {
                 if (file.requiresUpdate()) {
                     requiresUpdate = true;
-                    break;
+                    LOGGER.info("Файл требует обновления: " + file.getPath());
                 }
             }
 
@@ -64,7 +61,7 @@ public class AutoUpdater {
             }
 
         } catch (Exception e) {
-            LOGGER.log(Level.SEVERE, "Ошибка проверки обновлений", e);
+            LOGGER.log(java.util.logging.Level.SEVERE, "Ошибка проверки обновлений", e);
         }
     }
 
