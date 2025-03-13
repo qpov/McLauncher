@@ -11,6 +11,8 @@ import javax.xml.transform.stream.StreamResult;
 import java.io.*;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.util.Formatter;
 import java.util.List;
 import java.util.logging.FileHandler;
 import java.util.logging.Level;
@@ -25,12 +27,10 @@ public class AutoUpdater {
 
     static {
         try {
-            // Создаем папку logs, если её нет
             File logsDir = new File("logs");
             if (!logsDir.exists()) {
                 logsDir.mkdirs();
             }
-            // Настраиваем логирование в файл
             FileHandler fileHandler = new FileHandler("logs/autoupdater.log", true);
             fileHandler.setFormatter(new SimpleFormatter());
             LOGGER.addHandler(fileHandler);
@@ -43,46 +43,38 @@ public class AutoUpdater {
     public static void checkAndUpdate() {
         try {
             LOGGER.info("Чтение конфигурации обновления из: " + CONFIG_URL);
-            // 1) Скачиваем удалённую конфигурацию
+            // Скачиваем удалённую конфигурацию
             try (InputStream remoteConfigStream = new URL(CONFIG_URL).openStream()) {
-
-                // 2) Преобразуем XML: заменяем относительные пути на абсолютные, используя user.dir
+                // Преобразуем XML: заменяем относительные пути на абсолютные и пересчитываем SHA-1 для локальных файлов
                 String updatedConfigXml = updatePathsInConfig(remoteConfigStream);
-
-                // 3) Читаем конфигурацию из обновлённого XML
+                // Читаем конфигурацию из обновлённого XML
                 Configuration config = Configuration.read(
                         new InputStreamReader(
                                 new ByteArrayInputStream(updatedConfigXml.getBytes(StandardCharsets.UTF_8)),
                                 StandardCharsets.UTF_8));
 
-                // 4) Проверяем, какие файлы нуждаются в обновлении, и логируем
+                // Логируем список файлов, требующих обновления
                 List<FileMetadata> allFiles = config.getFiles();
                 boolean anyRequiresUpdate = false;
                 for (FileMetadata fm : allFiles) {
                     if (fm.requiresUpdate()) {
                         anyRequiresUpdate = true;
-                        LOGGER.info("Файл требует обновления: " + fm.getPath()
-                                + " | Ожидаемый SHA-1: " + fm.getChecksum());
+                        LOGGER.info("Файл требует обновления: " + fm.getPath() +
+                                " | Ожидаемый SHA-1: " + fm.getChecksum());
                     }
                 }
-
                 if (!anyRequiresUpdate) {
                     LOGGER.info("Обновление не требуется.");
                     return;
                 }
-
-                // 5) Вызываем update() в блоке try/catch, чтобы залогировать, если возникнут ошибки
                 LOGGER.info("Обновление найдено, начинаем обновление...");
                 boolean restartRequired;
                 try {
                     restartRequired = config.update();
                 } catch (Exception ex) {
-                    // Если при обновлении какого-то файла возникла ошибка — логируем и выходим
                     LOGGER.log(Level.SEVERE, "Ошибка при обновлении файлов", ex);
                     return;
                 }
-
-                // 6) Если обновление завершилось без исключений, логируем результат
                 if (restartRequired) {
                     LOGGER.info("Обновление завершено, требуется перезапуск приложения.");
                     System.exit(0);
@@ -90,15 +82,15 @@ public class AutoUpdater {
                     LOGGER.info("Обновление завершено, перезапуск не требуется.");
                 }
             }
-
         } catch (Exception e) {
             LOGGER.log(Level.SEVERE, "Исключение при проверке/выполнении обновления", e);
         }
     }
 
     /**
-     * Метод преобразует конфигурационный XML, заменяя значение атрибута "path"
-     * для каждого файла на абсолютный путь, используя рабочую директорию пользователя.
+     * Преобразует конфигурационный XML, заменяя значение атрибута "path" для каждого файла
+     * на абсолютный путь (на основе рабочей директории пользователя), а также пересчитывает SHA-1
+     * для локальных файлов, если они существуют.
      */
     private static String updatePathsInConfig(InputStream configStream) throws Exception {
         // Создаем парсер XML
@@ -118,23 +110,25 @@ public class AutoUpdater {
                 continue;
             }
             // Если путь уже абсолютный – пропускаем
-            if (new File(relPath).isAbsolute()) {
-                continue;
+            File fileCandidate = new File(relPath);
+            if (!fileCandidate.isAbsolute()) {
+                // Формируем абсолютный путь, объединяя userDir и относительный путь
+                File absFile = new File(userDir, relPath);
+                String absolutePath = absFile.getAbsolutePath().replace("\\", "/");
+                fileElem.setAttribute("path", absolutePath);
+
+                // Если файл существует, пересчитываем SHA-1 и обновляем атрибут
+                if (absFile.exists() && absFile.isFile()) {
+                    String sha1 = calculateSHA1(absFile);
+                    fileElem.setAttribute("sha1", sha1);
+                }
             }
-            // Формируем абсолютный путь, объединяя userDir и относительный путь
-            File absFile = new File(userDir, relPath);
-            String absolutePath = absFile.getAbsolutePath().replace("\\", "/");
-            // Обновляем атрибут path
-            fileElem.setAttribute("path", absolutePath);
         }
-
-        // Обновляем атрибут base, если он есть
+        // Обновляем (или удаляем) атрибут base в корневом элементе, чтобы update4j использовал рабочую директорию
         Element root = doc.getDocumentElement();
-        if (root.hasAttribute("base")) {
-            root.setAttribute("base", userDir);
-        }
+        root.setAttribute("base", userDir);
 
-        // Преобразуем обновленный XML обратно в строку
+        // Преобразуем XML обратно в строку
         TransformerFactory tf = TransformerFactory.newInstance();
         Transformer transformer = tf.newTransformer();
         transformer.setOutputProperty(OutputKeys.INDENT, "yes");
@@ -143,8 +137,33 @@ public class AutoUpdater {
         return writer.toString();
     }
 
+    /**
+     * Вычисляет SHA-1 контрольную сумму для заданного файла.
+     */
+    private static String calculateSHA1(File file) throws Exception {
+        MessageDigest md = MessageDigest.getInstance("SHA-1");
+        try (InputStream fis = new FileInputStream(file)) {
+            byte[] buffer = new byte[4096];
+            int bytesRead;
+            while ((bytesRead = fis.read(buffer)) != -1) {
+                md.update(buffer, 0, bytesRead);
+            }
+        }
+        return byteArray2Hex(md.digest());
+    }
+
+    private static String byteArray2Hex(final byte[] hash) {
+        try (Formatter formatter = new Formatter()) {
+            for (byte b : hash) {
+                formatter.format("%02x", b);
+            }
+            return formatter.toString();
+        }
+    }
+
     public static void main(String[] args) {
         checkAndUpdate();
-        // Остальной код (или вызов LauncherUI.main(...)) можно разместить здесь
+        // Запуск основного кода приложения, например:
+        // LauncherUI.main(args);
     }
 }
