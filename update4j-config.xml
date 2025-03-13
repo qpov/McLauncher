@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration base="A:/Projects/McLauncher">
   <files>
+    <file uri="https://raw.githubusercontent.com/qpov/McLauncher/main/assets/indexes/19.json" path="A:/Projects/McLauncher/assets/indexes/19.json" sha1="87954e1d978096bd2cb1cd5a507a55fe25690a51" size="463728" />
     <file uri="https://raw.githubusercontent.com/qpov/McLauncher/main/assets/log_configs/client-1.21.2.xml" path="A:/Projects/McLauncher/assets/log_configs/client-1.21.2.xml" sha1="39384bd14c0606d812afec88d8aff595b2587dd9" size="1073" />
     <file uri="https://raw.githubusercontent.com/qpov/McLauncher/main/assets/objects/00/005ff4be3158efd7ea7851cddc9839c753d65773" path="A:/Projects/McLauncher/assets/objects/00/005ff4be3158efd7ea7851cddc9839c753d65773" sha1="005ff4be3158efd7ea7851cddc9839c753d65773" size="6367" />
     <file uri="https://raw.githubusercontent.com/qpov/McLauncher/main/assets/objects/00/00765b2e5a821e8b22c8b555fd32d887ec805aed" path="A:/Projects/McLauncher/assets/objects/00/00765b2e5a821e8b22c8b555fd32d887ec805aed" sha1="00765b2e5a821e8b22c8b555fd32d887ec805aed" size="4531" />
