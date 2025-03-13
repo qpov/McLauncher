@@ -1,5 +1,4 @@
-// node generator-update-config.js . "https://raw.githubusercontent.com/qpov/McLauncher/main/" update4j-config.xml
-
+// node generate-update-config.js . "https://raw.githubusercontent.com/qpov/McLauncher/main/" update4j-config.xml
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
@@ -8,7 +7,7 @@ const rootDir = process.argv[2] || ".";
 const baseUri = process.argv[3] || "https://raw.githubusercontent.com/qpov/McLauncher/main/";
 const outputFile = process.argv[4] || "update4j-config.xml";
 
-const exclude = [".git", ".gitignore", "update4j-config.xml", "node_modules"];
+const exclude = [".git", ".gitignore", "update4j-config.xml"];
 
 function walkDir(dir, fileList = []) {
     const entries = fs.readdirSync(dir, { withFileTypes: true });
@@ -32,11 +31,13 @@ function walkDir(dir, fileList = []) {
 
 function generateConfig() {
     const fileList = walkDir(rootDir);
-    const baseDir = path.resolve(rootDir).split(path.sep).join("/");
+    const baseDir = path.resolve(rootDir).replace(/\\/g, "/"); // абсолютный путь
+
     let xml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
     xml += `<configuration base="${baseDir}">\n  <files>\n`;
     fileList.forEach(file => {
-        xml += `    <file uri="${baseUri}${file.relPath}" path="${file.relPath}" sha1="${file.sha1}" size="${file.size}" />\n`;
+        const absolutePath = path.resolve(rootDir, file.relPath).replace(/\\/g, "/");
+        xml += `    <file uri="${baseUri}${file.relPath}" path="${absolutePath}" sha1="${file.sha1}" size="${file.size}" />\n`;
     });
     xml += `  </files>\n</configuration>\n`;
     fs.writeFileSync(outputFile, xml);
@@ -44,3 +45,18 @@ function generateConfig() {
 }
 
 generateConfig();
+
+function generateConfig() {
+    const fileList = walkDir(rootDir);
+    const baseDir = path.resolve(rootDir).replace(/\\/g, "/"); // абсолютный путь
+
+    let xml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
+    xml += `<configuration base="${baseDir}">\n  <files>\n`;
+    fileList.forEach(file => {
+        const absolutePath = path.resolve(rootDir, file.relPath).replace(/\\/g, "/");
+        xml += `    <file uri="${baseUri}${file.relPath}" path="${absolutePath}" sha1="${file.sha1}" size="${file.size}" />\n`;
+    });
+    xml += `  </files>\n</configuration>\n`;
+    fs.writeFileSync(outputFile, xml);
+    console.log(`Файл ${outputFile} сгенерирован успешно.`);
+}
