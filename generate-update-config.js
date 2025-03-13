@@ -39,11 +39,12 @@ function walkDir(dir, fileList = []) {
 function generateConfig() {
     const fileList = walkDir(rootDir);
     let xml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
-    // Не указываем атрибут base – будем использовать placeholder в каждом пути
-    xml += `<configuration>\n  <files>\n`;
+    // Здесь задаем базовый каталог, относительно которого будут размещаться файлы.
+    // update4j подставит рабочую директорию пользователя, когда запустится лаунчер.
+    xml += `<configuration base="${process.cwd()}">\n  <files>\n`;
     fileList.forEach(file => {
-        // Используем ${user.dir} для подстановки рабочей директории пользователя.
-        xml += `    <file uri="${baseUri}${file.path}" path="\${user.dir}/${file.path}" sha1="${file.sha1}" size="${file.size}" />\n`;
+        // Не выводим атрибут path – update4j возьмет путь из base и относительный путь файла из URI.
+        xml += `    <file uri="${baseUri}${file.path}" sha1="${file.sha1}" size="${file.size}" />\n`;
     });
     xml += `  </files>\n</configuration>\n`;
     fs.writeFileSync(outputFile, xml);
