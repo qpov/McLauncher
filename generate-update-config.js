@@ -4,38 +4,41 @@ const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
 
-// Корневая папка, которую нужно сканировать (обычно это папка с вашим jar файлом и всем остальным)
-const rootDir = process.argv[2] || "."; 
-// Базовый URI, по которому будут доступны файлы обновления (на GitHub, например)
+// Корневая папка, которую будем сканировать (обычно это корень вашего проекта)
+const rootDir = process.argv[2] || ".";
+// Базовый URI, по которому будут доступны файлы (например, на GitHub)
 const baseUri = process.argv[3] || "https://raw.githubusercontent.com/qpov/McLauncher/main/";
-// Выходной файл update4j-config.xml
+// Имя выходного файла конфигурации
 const outputFile = process.argv[4] || "update4j-config.xml";
 
-// Функция для рекурсивного обхода папок
+// Список файлов и папок, которые следует исключить
+const exclude = [".git", ".gitignore", "update4j-config.xml"];
+
+// Рекурсивная функция для обхода папок
 function walkDir(dir, fileList = []) {
-    const files = fs.readdirSync(dir);
-    files.forEach(file => {
-        // Пропускаем скрытые файлы и папки (начинающиеся с точки)
-        if (file.startsWith(".")) return;
-        const fullPath = path.join(dir, file);
-        const stats = fs.statSync(fullPath);
-        if (stats.isDirectory()) {
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    for (const entry of entries) {
+        // Исключаем файлы и папки, заданные в списке или начинающиеся с точки
+        if (exclude.includes(entry.name) || entry.name.startsWith(".")) continue;
+        const fullPath = path.join(dir, entry.name);
+        if (entry.isDirectory()) {
             walkDir(fullPath, fileList);
         } else {
-            // Вычисляем относительный путь с учётом формата URL (используем прямые слэши)
+            // Получаем относительный путь с использованием прямых слэшей
             const relPath = path.relative(rootDir, fullPath).split(path.sep).join("/");
-            // Вычисляем SHA1
+            // Вычисляем SHA-1 хэш файла
             const fileBuffer = fs.readFileSync(fullPath);
             const hashSum = crypto.createHash("sha1");
             hashSum.update(fileBuffer);
             const hex = hashSum.digest("hex");
+            const stats = fs.statSync(fullPath);
             fileList.push({ path: relPath, sha1: hex, size: stats.size });
         }
-    });
+    }
     return fileList;
 }
 
-// Генерация XML-конфига
+// Генерируем XML-конфигурацию
 function generateConfig() {
     const fileList = walkDir(rootDir);
     let xml = `<?xml version="1.0" encoding="UTF-8"?>\n`;

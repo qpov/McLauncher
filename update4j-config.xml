@@ -4047,7 +4047,7 @@
     <file path="config/voicechat/voicechat-client.properties" sha1="021208b2ed949fcacafaf095208ed8fadb70765c" size="4293" />
     <file path="config/voicechat/voicechat-server.properties" sha1="4f648f3da58840863fb74874b870f268f4f194a0" size="2502" />
     <file path="config/voicechat/voicechat-volumes.properties" sha1="4eaca99c316dc0e047aa47897d73689054c1474d" size="37" />
-    <file path="generate-update-config.js" sha1="d4ff1d41d036fa0de331eda388e6bf2c6a52a826" size="2483" />
+    <file path="generate-update-config.js" sha1="3438973082b1560bc9f52f07d87152ccb3629f96" size="2712" />
     <file path="jdk-23/bin/api-ms-win-core-console-l1-1-0.dll" sha1="72473a4b33601a06f2f9aaa47645a1cad7469bf7" size="22008" />
     <file path="jdk-23/bin/api-ms-win-core-console-l1-2-0.dll" sha1="44989d7eeacc4cb9b77b68decaaabab89efb0f2b" size="21968" />
     <file path="jdk-23/bin/api-ms-win-core-datetime-l1-1-0.dll" sha1="e7178bc74ae55150f1af666964d9959815d6309b" size="22016" />
@@ -4652,6 +4652,6 @@
     <file path="src/com/launcher/ServerConfig.java" sha1="17f046ff53e916d6b86a9494899da784607fdb1d" size="288" />
     <file path="src/com/launcher/ServerList.java" sha1="9c9dd24ef893dc086411251379a6635c1cee16af" size="121" />
     <file path="theme.txt" sha1="4e8aec36dfe1260d66ad1488da1ee90a7c9935a9" size="6" />
-    <file path="update4j-config.xml" sha1="bbd6887e50d6ec8a34b34c2cc66dea18af703638" size="638704" />
+    <file path="update.log" sha1="4639a82f0c4c69d2780b7437c7d1dc7a887938b7" size="3213" />
   </files>
 </configuration>
