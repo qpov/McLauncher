@@ -1,6 +1,6 @@
 // node generate-update-config.js
 
-// generate-update-config.js
+/// generate-update-config.js
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
@@ -12,15 +12,18 @@ function getFiles(dir, fileList = [], baseDir = dir) {
     const filePath = path.join(dir, file);
     const relativePath = path.relative(baseDir, filePath).replace(/\\/g, '/');
     const stat = fs.statSync(filePath);
-    // Игнорируем папки, которые не нужны (например, .git, node_modules, update4j-config.xml)
+    // Игнорируем определённые папки/файлы
     if (stat.isDirectory()) {
-      if (file === '.git' || file === 'node_modules') return;
+      // Если имя папки начинается с .git или равно node_modules – пропускаем
+      if (file.startsWith('.git') || file === 'node_modules') return;
       getFiles(filePath, fileList, baseDir);
     } else {
-      // Если нужно игнорировать файлы с расширением .log, раскомментируйте следующую строку:
-      // if (file.endsWith('.log')) return;
-      // Если вы не хотите включать сам update4j‑config.xml, то:
+      // Игнорируем файлы с расширением .log
+      if (file.endsWith('.log')) return;
+      // Не включаем update4j-config.xml (если он есть)
       if (file === 'update4j-config.xml') return;
+      // Также исключаем файлы, если их относительный путь начинается с .git
+      if (relativePath.startsWith('.git')) return;
       fileList.push({ relativePath, fullPath: filePath, size: stat.size });
     }
   });
@@ -48,7 +51,6 @@ files.forEach(file => {
   xml += `        <file path="${file.relativePath}" sha1="${sha1}" size="${file.size}" />\n`;
 });
 xml += '    </files>\n';
-// Если нужно, можно добавить дополнительные настройки update4j, например mainClass или restartAfterUpdate
 xml += '    <mainClass>com.launcher.LauncherUI</mainClass>\n';
 xml += '    <restartAfterUpdate>true</restartAfterUpdate>\n';
 xml += '</configuration>\n';

@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
     <files>
-        <file path=".gitignore" sha1="7430a5b1685fd9d17aea9a001f3ff9618a3e6d1a" size="38" />
         <file path="assets/indexes/19.json" sha1="90494d2befc1947657653435cd69d6166b820bcd" size="463827" />
         <file path="assets/log_configs/client-1.21.2.xml" sha1="39384bd14c0606d812afec88d8aff595b2587dd9" size="1073" />
         <file path="assets/objects/00/005ff4be3158efd7ea7851cddc9839c753d65773" sha1="005ff4be3158efd7ea7851cddc9839c753d65773" size="6367" />
@@ -4048,7 +4047,7 @@
         <file path="config/voicechat/voicechat-client.properties" sha1="021208b2ed949fcacafaf095208ed8fadb70765c" size="4293" />
         <file path="config/voicechat/voicechat-server.properties" sha1="4f648f3da58840863fb74874b870f268f4f194a0" size="2502" />
         <file path="config/voicechat/voicechat-volumes.properties" sha1="4eaca99c316dc0e047aa47897d73689054c1474d" size="37" />
-        <file path="generate-update-config.js" sha1="05f200195a121e28c631de95335db12f6c4774d0" size="2579" />
+        <file path="generate-update-config.js" sha1="3eeda3b6976cddf33c735f2f96729260cf52faaa" size="2559" />
         <file path="jdk-23/bin/api-ms-win-core-console-l1-1-0.dll" sha1="72473a4b33601a06f2f9aaa47645a1cad7469bf7" size="22008" />
         <file path="jdk-23/bin/api-ms-win-core-console-l1-2-0.dll" sha1="44989d7eeacc4cb9b77b68decaaabab89efb0f2b" size="21968" />
         <file path="jdk-23/bin/api-ms-win-core-datetime-l1-1-0.dll" sha1="e7178bc74ae55150f1af666964d9959815d6309b" size="22016" />
@@ -4474,7 +4473,6 @@
         <file path="jdk-23/LICENSE" sha1="e75e828ba2898c74b4a682ce5291a69acf9cc55a" size="6186" />
         <file path="jdk-23/README" sha1="bde8fc793e92c684ec02e7fcd0df8a0dd40b8b52" size="290" />
         <file path="jdk-23/release" sha1="3cfe9b6872ad015f3f5088aac28668a306952e1d" size="1370" />
-        <file path="launch4j.log" sha1="900f4a1cd5a7b814c7edc3c17d612acff8e5c0fa" size="2439" />
         <file path="lib/com/electronwill/night-config/core/3.7.3/core-3.7.3.jar" sha1="4853861e9fa8e59f36a16ebef78217be0ecbaba8" size="359839" />
         <file path="lib/com/electronwill/night-config/core/3.7.4/core-3.7.4.jar" sha1="fcd552161d0a6c2f0fcf75e337abbb040c597e1d" size="360099" />
         <file path="lib/com/electronwill/night-config/toml/3.7.3/toml-3.7.3.jar" sha1="3c59200746f44d28899ec4c8af4575b309978f1d" size="39542" />
@@ -4648,7 +4646,7 @@
         <file path="servers.json" sha1="7f2807c3ff882866a676ed5b43eb3e306f2ad976" size="320" />
         <file path="src/com/launcher/AutoUpdater.java" sha1="55e3a1241070870f0b906642e02e481271db4710" size="641" />
         <file path="src/com/launcher/ConfigLoader.java" sha1="8e45aa32d2ea9a1c646af8c07bfd54f885b4ea0a" size="424" />
-        <file path="src/com/launcher/LauncherUI.java" sha1="6facca2515e299eadf007b115db1c5203ae45827" size="41892" />
+        <file path="src/com/launcher/LauncherUI.java" sha1="999f3cc58d6eefd21614981ec00ba898e4d9a0c7" size="41894" />
         <file path="src/com/launcher/ModConfig.java" sha1="ae5a9c6e874489da9c4c95b4ff82cbe2afa4af9a" size="103" />
         <file path="src/com/launcher/ServerConfig.java" sha1="17f046ff53e916d6b86a9494899da784607fdb1d" size="288" />
         <file path="src/com/launcher/ServerList.java" sha1="9c9dd24ef893dc086411251379a6635c1cee16af" size="121" />
