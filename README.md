@@ -11,4 +11,5 @@ jar cfm McLauncher.jar manifest.mf -C bin .
 java -jar McLauncher.jar
 
 # Getdown
-java -jar getdown-launcher-1.8.7.jar .
+java -classpath getdown-core-1.8.7.jar com.threerings.getdown.tools.Digester myapp
+java -jar getdown-launcher-1.8.7.jar myapp
