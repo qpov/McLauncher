@@ -6,7 +6,7 @@ const rootDir = process.argv[2] || ".";
 const baseUri = process.argv[3] || "https://raw.githubusercontent.com/qpov/McLauncher/main/";
 const outputFile = process.argv[4] || "update4j-config.xml";
 
-const exclude = [".git", ".gitignore", "update4j-config.xml", "generate-update-config.js"];
+const exclude = [".git", ".gitignore", outputFile, "generate-update-config.js"];
 
 function walkDir(dir, fileList = []) {
     const entries = fs.readdirSync(dir, { withFileTypes: true });
@@ -30,16 +30,14 @@ function walkDir(dir, fileList = []) {
 
 function generateConfig() {
     const fileList = walkDir(rootDir);
-    const baseDir = path.resolve(rootDir).replace(/\\/g, "/");
     let xml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
-    xml += `<configuration base="${baseDir}">\n  <files>\n`;
+    xml += `<configuration base="${path.resolve(rootDir).replace(/\\/g, "/")}">\n  <files>\n`;
     fileList.forEach(file => {
-        const absolutePath = `${baseDir}/${file.relPath}`;
-        xml += `    <file uri="${baseUri}${file.relPath}" path="${absolutePath}" sha1="${file.sha1}" size="${file.size}" />\n`;
+        xml += `    <file uri="${baseUri}${file.relPath}" path="${file.relPath}" sha1="${file.sha1}" size="${file.size}" />\n`;
     });
     xml += `  </files>\n</configuration>\n`;
     fs.writeFileSync(outputFile, xml);
-    console.log(`Файл ${outputFile} успешно создан.`);
+    console.log(`Файл ${outputFile} сгенерирован успешно.`);
 }
 
 generateConfig();
