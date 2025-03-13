@@ -1,6 +1,5 @@
 .git
 .gitignore
-update4j-config.xml
 launcher.exe
 jdk-23
 *.log
