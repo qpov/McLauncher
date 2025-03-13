@@ -4,14 +4,14 @@ const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
 
-// Корневая папка, которую будем сканировать (обычно корень проекта)
+// Корневая папка для сканирования (обычно корень проекта)
 const rootDir = process.argv[2] || ".";
-// Базовый URI, по которому будут доступны файлы (например, ваш GitHub URL)
+// Базовый URI для файлов (например, URL на GitHub)
 const baseUri = process.argv[3] || "https://raw.githubusercontent.com/qpov/McLauncher/main/";
 // Имя выходного XML-файла конфигурации
 const outputFile = process.argv[4] || "update4j-config.xml";
 
-// Список исключений (файлы/папки, которые не должны попадать в конфигурацию)
+// Файлы/папки, которые не нужно включать
 const exclude = [".git", ".gitignore", "update4j-config.xml", "launcher.exe"];
 
 function walkDir(dir, fileList = []) {
@@ -30,7 +30,7 @@ function walkDir(dir, fileList = []) {
             hashSum.update(fileBuffer);
             const hex = hashSum.digest("hex");
             const stats = fs.statSync(fullPath);
-            fileList.push({ path: relPath, sha1: hex, size: stats.size });
+            fileList.push({ relPath, sha1: hex, size: stats.size });
         }
     }
     return fileList;
@@ -38,13 +38,12 @@ function walkDir(dir, fileList = []) {
 
 function generateConfig() {
     const fileList = walkDir(rootDir);
+    // Вычисляем абсолютный путь к rootDir и преобразуем обратные слэши в прямые
+    const baseDir = path.resolve(rootDir).split(path.sep).join("/");
     let xml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
-    // Здесь задаем базовый каталог, относительно которого будут размещаться файлы.
-    // update4j подставит рабочую директорию пользователя, когда запустится лаунчер.
-    xml += `<configuration base="${process.cwd()}">\n  <files>\n`;
+    xml += `<configuration base="${baseDir}">\n  <files>\n`;
     fileList.forEach(file => {
-        // Не выводим атрибут path – update4j возьмет путь из base и относительный путь файла из URI.
-        xml += `    <file uri="${baseUri}${file.path}" sha1="${file.sha1}" size="${file.size}" />\n`;
+        xml += `    <file uri="${baseUri}${file.relPath}" path="${file.relPath}" sha1="${file.sha1}" size="${file.size}" />\n`;
     });
     xml += `  </files>\n</configuration>\n`;
     fs.writeFileSync(outputFile, xml);
