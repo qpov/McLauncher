@@ -11,6 +11,7 @@ code = lib/flatlaf-3.5.4.jar
 
 # Если есть ресурсы (не на classpath), пишем их в resources:
 resources = assets/**
+resources = servers.json
 
 # Главный класс приложения
 class = com.launcher.LauncherUI
