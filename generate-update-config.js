@@ -1,5 +1,6 @@
 const fs = require("fs");
 const path = require("path");
+const crypto = require("crypto");
 
 // Корневая директория проекта
 const rootDir = process.argv[2] || ".";
@@ -21,8 +22,8 @@ function walkDir(dir, fileList = []) {
         } else {
             // Получаем путь относительно корневой директории с разделителями "/"
             const relPath = path.relative(rootDir, fullPath).replace(/\\/g, "/");
-            // Вместо вычисления реального SHA-1 всегда записываем "0"
-            const sha1 = "0";
+            const fileBuffer = fs.readFileSync(fullPath);
+            const sha1 = crypto.createHash("sha1").update(fileBuffer).digest("hex");
             const stats = fs.statSync(fullPath);
             fileList.push({ relPath, sha1, size: stats.size });
         }
@@ -32,12 +33,13 @@ function walkDir(dir, fileList = []) {
 
 function generateConfig() {
     const fileList = walkDir(rootDir);
-    // Абсолютный путь к корневой директории, например "A:/Projects/McLauncher"
+    // Получаем абсолютный путь к корневой директории, например "A:/Projects/McLauncher"
     const baseDir = path.resolve(rootDir).replace(/\\/g, "/");
     
     let xml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
     xml += `<configuration base="${baseDir}">\n  <files>\n`;
     fileList.forEach(file => {
+        // Для каждого файла указываем абсолютный путь, получая его как baseDir + "/" + относительный путь
         xml += `    <file uri="${baseUriRemote}${file.relPath}" path="${baseDir}/${file.relPath}" sha1="${file.sha1}" size="${file.size}" />\n`;
     });
     xml += `  </files>\n</configuration>\n`;
