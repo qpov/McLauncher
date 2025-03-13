@@ -1,0 +1,2 @@
+Main-Class: com.launcher.LauncherUI
+Class-Path: lib/update4j-1.5.9.jar lib/com/google/code/gson/gson/2.11.0/gson-2.11.0.jar lib/flatlaf-3.5.4.jar
