@@ -17,7 +17,7 @@ function walkDir(dir, fileList = []) {
         if (entry.isDirectory()) {
             walkDir(fullPath, fileList);
         } else {
-            const relPath = path.relative(rootDir, fullPath).split(path.sep).join("/");
+            const relPath = path.relative(rootDir, fullPath).replace(/\\/g, "/");
             const fileBuffer = fs.readFileSync(fullPath);
             const hashSum = crypto.createHash("sha1");
             hashSum.update(fileBuffer);
@@ -31,12 +31,12 @@ function walkDir(dir, fileList = []) {
 
 function generateConfig() {
     const fileList = walkDir(rootDir);
-    const baseDir = path.resolve(rootDir).replace(/\\/g, "/"); // абсолютный путь
+    const baseDir = path.resolve(rootDir).replace(/\\/g, "/");
 
     let xml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
     xml += `<configuration base="${baseDir}">\n  <files>\n`;
     fileList.forEach(file => {
-        const absolutePath = path.resolve(rootDir, file.relPath).replace(/\\/g, "/");
+        const absolutePath = path.join(baseDir, file.relPath).replace(/\\/g, "/");
         xml += `    <file uri="${baseUri}${file.relPath}" path="${absolutePath}" sha1="${file.sha1}" size="${file.size}" />\n`;
     });
     xml += `  </files>\n</configuration>\n`;
@@ -45,18 +45,3 @@ function generateConfig() {
 }
 
 generateConfig();
-
-function generateConfig() {
-    const fileList = walkDir(rootDir);
-    const baseDir = path.resolve(rootDir).replace(/\\/g, "/"); // абсолютный путь
-
-    let xml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
-    xml += `<configuration base="${baseDir}">\n  <files>\n`;
-    fileList.forEach(file => {
-        const absolutePath = path.resolve(rootDir, file.relPath).replace(/\\/g, "/");
-        xml += `    <file uri="${baseUri}${file.relPath}" path="${absolutePath}" sha1="${file.sha1}" size="${file.size}" />\n`;
-    });
-    xml += `  </files>\n</configuration>\n`;
-    fs.writeFileSync(outputFile, xml);
-    console.log(`Файл ${outputFile} сгенерирован успешно.`);
-}
