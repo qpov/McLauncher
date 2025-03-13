@@ -5,11 +5,13 @@ javac -cp ".;lib/com/google/code/gson/gson/2.11.0/gson-2.11.0.jar;lib\flatlaf-3.
 java -cp "bin;lib/com/google/code/gson/gson/2.11.0/gson-2.11.0.jar;lib\flatlaf-3.5.4.jar" com.launcher.LauncherUI
 
 # Создание исполняемого JAR:
-jar cfm McLauncher.jar manifest.mf -C bin .
+jar cfm QmLauncher.jar manifest.mf -C bin .
 
 # Тестовый запуск JAR:
-java -jar McLauncher.jar
+java -jar QmLauncher.jar
 
-# Getdown
-java -classpath getdown-core-1.8.7.jar com.threerings.getdown.tools.Digester myapp
-java -jar getdown-launcher-1.8.7.jar myapp
+# Getdown push
+java -classpath getdown-core-1.8.7.jar com.threerings.getdown.tools.Digester QmLauncher
+
+# Getdown install
+java -jar getdown-launcher-1.8.7.jar QmLauncher

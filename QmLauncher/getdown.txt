@@ -1,9 +1,9 @@
-appbase = https://raw.githubusercontent.com/qpov/McLauncher/main/myapp/
+appbase = https://raw.githubusercontent.com/qpov/QmLauncher/main/QmLauncher/
 
-ui.name = McLauncher
+ui.name = QmLauncher
 
 # Ваш основной jar:
-code = McLauncher.jar
+code = QmLauncher.jar
 
 # Каждую библиотеку указываем отдельно:
 code = lib/com/google/code/gson/gson/2.11.0/gson-2.11.0.jar
