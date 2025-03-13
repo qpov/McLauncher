@@ -4473,7 +4473,7 @@
     <file uri="https://raw.githubusercontent.com/qpov/McLauncher/main/jdk-23/LICENSE" sha1="e75e828ba2898c74b4a682ce5291a69acf9cc55a" size="6186" />
     <file uri="https://raw.githubusercontent.com/qpov/McLauncher/main/jdk-23/README" sha1="bde8fc793e92c684ec02e7fcd0df8a0dd40b8b52" size="290" />
     <file uri="https://raw.githubusercontent.com/qpov/McLauncher/main/jdk-23/release" sha1="3cfe9b6872ad015f3f5088aac28668a306952e1d" size="1370" />
-    <file uri="https://raw.githubusercontent.com/qpov/McLauncher/main/launch4j.log" sha1="7f50015c0f79b210c71ce4b22c4bd9123d60f422" size="14634" />
+    <file uri="https://raw.githubusercontent.com/qpov/McLauncher/main/launch4j.log" sha1="d5b22ba111c6bd5010e872813a981783b29f0669" size="15447" />
     <file uri="https://raw.githubusercontent.com/qpov/McLauncher/main/lib/com/electronwill/night-config/core/3.7.3/core-3.7.3.jar" sha1="4853861e9fa8e59f36a16ebef78217be0ecbaba8" size="359839" />
     <file uri="https://raw.githubusercontent.com/qpov/McLauncher/main/lib/com/electronwill/night-config/core/3.7.4/core-3.7.4.jar" sha1="fcd552161d0a6c2f0fcf75e337abbb040c597e1d" size="360099" />
     <file uri="https://raw.githubusercontent.com/qpov/McLauncher/main/lib/com/electronwill/night-config/toml/3.7.3/toml-3.7.3.jar" sha1="3c59200746f44d28899ec4c8af4575b309978f1d" size="39542" />
@@ -4633,8 +4633,8 @@
     <file uri="https://raw.githubusercontent.com/qpov/McLauncher/main/lib/update4j-1.5.9.jar" sha1="cbc53eb5cf5e83cdd05f36c6053b94794a55a422" size="129526" />
     <file uri="https://raw.githubusercontent.com/qpov/McLauncher/main/lib/v1/objects/a7e5a6024bfd3cd614625aa05629adf760020304/client.jar" sha1="a7e5a6024bfd3cd614625aa05629adf760020304" size="28335587" />
     <file uri="https://raw.githubusercontent.com/qpov/McLauncher/main/manifest.mf" sha1="f696f807d8d3d0ff986fca54165a782926d9428d" size="148" />
-    <file uri="https://raw.githubusercontent.com/qpov/McLauncher/main/McLauncher.exe" sha1="655e369f00b0f8e7f120d086779084050d8b170d" size="81441" />
-    <file uri="https://raw.githubusercontent.com/qpov/McLauncher/main/McLauncher.jar" sha1="d61883c327dde4bd7e3e9e35d6d18eb49ed1cf33" size="17958" />
+    <file uri="https://raw.githubusercontent.com/qpov/McLauncher/main/McLauncher.exe" sha1="b86d86be9747f13afa7cf8851dfa0d6be96a9166" size="81446" />
+    <file uri="https://raw.githubusercontent.com/qpov/McLauncher/main/McLauncher.jar" sha1="2e61247566ae8058077f4f1cbdfc7a66bcd770ca" size="17958" />
     <file uri="https://raw.githubusercontent.com/qpov/McLauncher/main/native/glfw.dll" sha1="2e19147110b9872a52814956bab151a7aa80ce58" size="496128" />
     <file uri="https://raw.githubusercontent.com/qpov/McLauncher/main/native/jemalloc.dll" sha1="6403f8243ea983a225b3bcda6c821a0029ad9ee2" size="398336" />
     <file uri="https://raw.githubusercontent.com/qpov/McLauncher/main/native/jna2376941260962585108.dll" sha1="27ff882ac271db547aee520b38e3ba9aa91e136c" size="273408" />
@@ -4652,6 +4652,6 @@
     <file uri="https://raw.githubusercontent.com/qpov/McLauncher/main/src/com/launcher/ServerConfig.java" sha1="17f046ff53e916d6b86a9494899da784607fdb1d" size="288" />
     <file uri="https://raw.githubusercontent.com/qpov/McLauncher/main/src/com/launcher/ServerList.java" sha1="9c9dd24ef893dc086411251379a6635c1cee16af" size="121" />
     <file uri="https://raw.githubusercontent.com/qpov/McLauncher/main/theme.txt" sha1="4e8aec36dfe1260d66ad1488da1ee90a7c9935a9" size="6" />
-    <file uri="https://raw.githubusercontent.com/qpov/McLauncher/main/update.log" sha1="0d220a7fd0c6afe381abda6259680ec84c36247d" size="1081" />
+    <file uri="https://raw.githubusercontent.com/qpov/McLauncher/main/update.log" sha1="c1d50c67f8b77894d234408c316ad17df2516c52" size="1081" />
   </files>
 </configuration>
