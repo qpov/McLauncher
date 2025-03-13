@@ -86,19 +86,13 @@ public class AutoUpdater {
         }
     }
 
-    /**
-     * Преобразует конфигурационный XML, заменяя значение атрибута "path" для каждого файла
-     * на абсолютный путь (на основе рабочей директории пользователя), а также пересчитывает SHA-1
-     * для файлов, если они существуют и не пустые.
-     */
     private static String updatePathsInConfig(InputStream configStream) throws Exception {
         DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
         DocumentBuilder builder = factory.newDocumentBuilder();
         Document doc = builder.parse(configStream);
-
-        // Рабочая директория пользователя
+    
         String userDir = System.getProperty("user.dir").replace("\\", "/");
-
+    
         NodeList fileNodes = doc.getElementsByTagName("file");
         for (int i = 0; i < fileNodes.getLength(); i++) {
             Element fileElem = (Element) fileNodes.item(i);
@@ -106,54 +100,21 @@ public class AutoUpdater {
             if (relPath == null || relPath.trim().isEmpty()) {
                 continue;
             }
-            File fileCandidate = new File(relPath);
-            if (!fileCandidate.isAbsolute()) {
-                File absFile = new File(userDir, relPath);
-                String absolutePath = absFile.getAbsolutePath().replace("\\", "/");
-                fileElem.setAttribute("path", absolutePath);
-                // Если файл существует и имеет ненулевую длину – пересчитываем SHA-1
-                if (absFile.exists() && absFile.isFile() && absFile.length() > 0) {
-                    String sha1 = calculateSHA1(absFile);
-                    fileElem.setAttribute("sha1", sha1);
-                } else {
-                    LOGGER.warning("Файл " + absFile.getAbsolutePath() + " не найден или пустой. Оставляю SHA-1 как есть.");
-                }
-            }
+            File absFile = new File(userDir, relPath);
+            String absolutePath = absFile.getAbsolutePath().replace("\\", "/");
+            fileElem.setAttribute("path", absolutePath);
+            // **НЕ пересчитываем SHA-1 локально!**
+            // Просто указываем абсолютный путь
         }
-        // Устанавливаем base равным рабочей директории
         Element root = doc.getDocumentElement();
         root.setAttribute("base", userDir);
-
+    
         TransformerFactory tf = TransformerFactory.newInstance();
         Transformer transformer = tf.newTransformer();
         transformer.setOutputProperty(OutputKeys.INDENT, "yes");
         StringWriter writer = new StringWriter();
         transformer.transform(new DOMSource(doc), new StreamResult(writer));
         return writer.toString();
-    }
-
-    /**
-     * Вычисляет SHA-1 контрольную сумму для заданного файла.
-     */
-    private static String calculateSHA1(File file) throws Exception {
-        MessageDigest md = MessageDigest.getInstance("SHA-1");
-        try (InputStream fis = new FileInputStream(file)) {
-            byte[] buffer = new byte[4096];
-            int bytesRead;
-            while ((bytesRead = fis.read(buffer)) != -1) {
-                md.update(buffer, 0, bytesRead);
-            }
-        }
-        return byteArray2Hex(md.digest());
-    }
-
-    private static String byteArray2Hex(final byte[] hash) {
-        try (Formatter formatter = new Formatter()) {
-            for (byte b : hash) {
-                formatter.format("%02x", b);
-            }
-            return formatter.toString();
-        }
     }
 
     public static void main(String[] args) {
