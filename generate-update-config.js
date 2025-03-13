@@ -1,60 +1,72 @@
-// node generate-update-config.js
+// node generate-update-config.js .
 
-/// generate-update-config.js
+"use strict";
+
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 
-// Функция для рекурсивного обхода файлов в папке
-function getFiles(dir, fileList = [], baseDir = dir) {
-  const files = fs.readdirSync(dir);
-  files.forEach(file => {
-    const filePath = path.join(dir, file);
-    const relativePath = path.relative(baseDir, filePath).replace(/\\/g, '/');
-    const stat = fs.statSync(filePath);
-    // Игнорируем определённые папки/файлы
-    if (stat.isDirectory()) {
-      // Если имя папки начинается с .git или равно node_modules – пропускаем
-      if (file.startsWith('.git') || file === 'node_modules') return;
-      getFiles(filePath, fileList, baseDir);
-    } else {
-      // Игнорируем файлы с расширением .log
-      if (file.endsWith('.log')) return;
-      // Не включаем update4j-config.xml (если он есть)
-      if (file === 'update4j-config.xml') return;
-      // Также исключаем файлы, если их относительный путь начинается с .git
-      if (relativePath.startsWith('.git')) return;
-      fileList.push({ relativePath, fullPath: filePath, size: stat.size });
+// Корневая папка для сканирования; можно передать в качестве параметра, иначе текущая
+const baseDir = process.argv[2] || '.';
+
+// Функция для вычисления SHA1 хэша файла
+function hashFile(filePath) {
+    return new Promise((resolve, reject) => {
+        const hash = crypto.createHash('sha1');
+        const stream = fs.createReadStream(filePath);
+        stream.on('error', reject);
+        stream.on('data', (chunk) => hash.update(chunk));
+        stream.on('end', () => resolve(hash.digest('hex')));
+    });
+}
+
+// Функция для получения размера файла
+function getFileSize(filePath) {
+    return fs.statSync(filePath).size;
+}
+
+// Рекурсивная функция для сканирования папки
+async function processDirectory(dir) {
+    let files = [];
+    const items = fs.readdirSync(dir);
+    for (const item of items) {
+        const fullPath = path.join(dir, item);
+        const stats = fs.statSync(fullPath);
+        if (stats.isDirectory()) {
+            // Пропускаем папку .git и любые другие нежелательные папки
+            if (item === '.git') continue;
+            const subFiles = await processDirectory(fullPath);
+            files = files.concat(subFiles);
+        } else if (stats.isFile()) {
+            // Пропускаем файлы с расширением .log и сам update4j-config.xml
+            if (item.endsWith('.log') || item === 'update4j-config.xml') continue;
+            // Вычисляем абсолютный путь и формируем URI с префиксом file:///
+            const absolutePath = path.resolve(fullPath).replace(/\\/g, '/');
+            const uri = 'file:///' + absolutePath;
+            const sha1 = await hashFile(fullPath);
+            const size = getFileSize(fullPath);
+            // Можно сохранить и относительный путь (для удобства) – он будет использован как "path"
+            const relativePath = path.relative(baseDir, fullPath).replace(/\\/g, '/');
+            files.push({ path: relativePath, uri: uri, sha1: sha1, size: size });
+        }
     }
-  });
-  return fileList;
+    return files;
 }
 
-// Функция для вычисления SHA1-хэша файла
-function sha1OfFile(filePath) {
-  const hash = crypto.createHash('sha1');
-  const fileBuffer = fs.readFileSync(filePath);
-  hash.update(fileBuffer);
-  return hash.digest('hex');
+// Генерация XML файла конфигурации для update4j
+async function generateUpdate4jConfig() {
+    const files = await processDirectory(baseDir);
+    let xml = '<?xml version="1.0" encoding="UTF-8"?>\n';
+    xml += '<configuration>\n  <files>\n';
+    for (const file of files) {
+        xml += `    <file path="${file.path}" uri="${file.uri}" sha1="${file.sha1}" size="${file.size}" />\n`;
+    }
+    xml += '  </files>\n</configuration>\n';
+    fs.writeFileSync('update4j-config.xml', xml, 'utf8');
+    console.log('update4j-config.xml успешно сгенерирован.');
 }
 
-// Задайте корневую папку для сканирования (по умолчанию текущая папка)
-const rootDir = process.argv[2] || '.';
-const files = getFiles(rootDir);
-
-// Генерируем XML
-let xml = '<?xml version="1.0" encoding="UTF-8"?>\n';
-xml += '<configuration>\n';
-xml += '    <files>\n';
-files.forEach(file => {
-  const sha1 = sha1OfFile(file.fullPath);
-  xml += `        <file path="${file.relativePath}" sha1="${sha1}" size="${file.size}" />\n`;
+generateUpdate4jConfig().catch(err => {
+    console.error(err);
+    process.exit(1);
 });
-xml += '    </files>\n';
-xml += '    <mainClass>com.launcher.LauncherUI</mainClass>\n';
-xml += '    <restartAfterUpdate>true</restartAfterUpdate>\n';
-xml += '</configuration>\n';
-
-// Записываем в файл update4j-config.xml
-fs.writeFileSync('update4j-config.xml', xml, 'utf-8');
-console.log('Generated update4j-config.xml');
