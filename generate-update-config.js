@@ -9,7 +9,7 @@ const crypto = require('crypto');
 // имейте в виду, что для raw-версии файлов лучше использовать:
 // "https://raw.githubusercontent.com/qpov/McLauncher/main"
 // Здесь используем то, что вы указали:
-const BASE_URL = 'https://raw.githubusercontent.com/qpov/McLauncher/refs/heads/main';
+const BASE_URL = 'https://raw.githubusercontent.com/qpov/McLauncher/main';
 
 function computeSHA1(filePath) {
   const data = fs.readFileSync(filePath);
