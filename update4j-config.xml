@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration base="A:/Projects/McLauncher">
   <files>
-    <file uri="https://raw.githubusercontent.com/qpov/McLauncher/main/assets/indexes/19.json" path="A:/Projects/McLauncher/assets/indexes/19.json" sha1="90494d2befc1947657653435cd69d6166b820bcd" size="463827" />
     <file uri="https://raw.githubusercontent.com/qpov/McLauncher/main/assets/log_configs/client-1.21.2.xml" path="A:/Projects/McLauncher/assets/log_configs/client-1.21.2.xml" sha1="39384bd14c0606d812afec88d8aff595b2587dd9" size="1073" />
     <file uri="https://raw.githubusercontent.com/qpov/McLauncher/main/assets/objects/00/005ff4be3158efd7ea7851cddc9839c753d65773" path="A:/Projects/McLauncher/assets/objects/00/005ff4be3158efd7ea7851cddc9839c753d65773" sha1="005ff4be3158efd7ea7851cddc9839c753d65773" size="6367" />
     <file uri="https://raw.githubusercontent.com/qpov/McLauncher/main/assets/objects/00/00765b2e5a821e8b22c8b555fd32d887ec805aed" path="A:/Projects/McLauncher/assets/objects/00/00765b2e5a821e8b22c8b555fd32d887ec805aed" sha1="00765b2e5a821e8b22c8b555fd32d887ec805aed" size="4531" />
@@ -4630,7 +4629,7 @@
     <file uri="https://raw.githubusercontent.com/qpov/McLauncher/main/lib/org/tlauncher/tl_skin_cape_forge_1.21.3_1.21.4/1.35/tl_skin_cape_forge_1.21.3_1.21.4-1.35.jar" path="A:/Projects/McLauncher/lib/org/tlauncher/tl_skin_cape_forge_1.21.3_1.21.4/1.35/tl_skin_cape_forge_1.21.3_1.21.4-1.35.jar" sha1="634d7ff0a4a9fa826284a82835754310138dee95" size="949379" />
     <file uri="https://raw.githubusercontent.com/qpov/McLauncher/main/lib/update4j-1.5.9.jar" path="A:/Projects/McLauncher/lib/update4j-1.5.9.jar" sha1="cbc53eb5cf5e83cdd05f36c6053b94794a55a422" size="129526" />
     <file uri="https://raw.githubusercontent.com/qpov/McLauncher/main/lib/v1/objects/a7e5a6024bfd3cd614625aa05629adf760020304/client.jar" path="A:/Projects/McLauncher/lib/v1/objects/a7e5a6024bfd3cd614625aa05629adf760020304/client.jar" sha1="a7e5a6024bfd3cd614625aa05629adf760020304" size="28335587" />
-    <file uri="https://raw.githubusercontent.com/qpov/McLauncher/main/logs/autoupdater.log" path="A:/Projects/McLauncher/logs/autoupdater.log" sha1="7298ad768077ca443c01379dbbcc7c5ba9d34574" size="7138680" />
+    <file uri="https://raw.githubusercontent.com/qpov/McLauncher/main/logs/autoupdater.log" path="A:/Projects/McLauncher/logs/autoupdater.log" sha1="edc16d1ddc559c235f4809a6717a37835bb50d14" size="7138997" />
     <file uri="https://raw.githubusercontent.com/qpov/McLauncher/main/manifest.mf" path="A:/Projects/McLauncher/manifest.mf" sha1="f696f807d8d3d0ff986fca54165a782926d9428d" size="148" />
     <file uri="https://raw.githubusercontent.com/qpov/McLauncher/main/McLauncher.jar" path="A:/Projects/McLauncher/McLauncher.jar" sha1="0b8d96d26248b15715760f5da4968961e3756b22" size="18507" />
     <file uri="https://raw.githubusercontent.com/qpov/McLauncher/main/native/glfw.dll" path="A:/Projects/McLauncher/native/glfw.dll" sha1="2e19147110b9872a52814956bab151a7aa80ce58" size="496128" />
