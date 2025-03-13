@@ -4,7 +4,6 @@ import org.update4j.Configuration;
 import org.update4j.FileMetadata;
 
 import java.io.File;
-import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
@@ -26,8 +25,8 @@ public class AutoUpdater {
             fileHandler.setFormatter(new SimpleFormatter());
             LOGGER.addHandler(fileHandler);
             LOGGER.setLevel(Level.ALL);
-        } catch (IOException e) {
-            LOGGER.log(Level.SEVERE, "Не удалось настроить логирование", e);
+        } catch (Exception e) {
+            LOGGER.severe("Ошибка инициализации логирования: " + e.getMessage());
         }
     }
 
@@ -55,7 +54,7 @@ public class AutoUpdater {
             } else {
                 LOGGER.info("Обновление не требуется.");
             }
-        } catch (IOException e) {
+        } catch (Exception e) {
             LOGGER.log(Level.SEVERE, "Ошибка проверки обновлений", e);
         }
     }
