@@ -4033,7 +4033,7 @@
     <file uri="https://raw.githubusercontent.com/qpov/McLauncher/main/assets/objects/ff/ffd59d56815c269515151dc71655b091a7bc5729" path="assets/objects/ff/ffd59d56815c269515151dc71655b091a7bc5729" sha1="ffd59d56815c269515151dc71655b091a7bc5729" size="11589" />
     <file uri="https://raw.githubusercontent.com/qpov/McLauncher/main/assets/objects/ff/fff2b8b3cc447917102d8109f4da8f87da040656" path="assets/objects/ff/fff2b8b3cc447917102d8109f4da8f87da040656" sha1="fff2b8b3cc447917102d8109f4da8f87da040656" size="9310" />
     <file uri="https://raw.githubusercontent.com/qpov/McLauncher/main/assets/objects/ff/fff53a8f308c1fd78641188f635e01ef29eba61c" path="assets/objects/ff/fff53a8f308c1fd78641188f635e01ef29eba61c" sha1="fff53a8f308c1fd78641188f635e01ef29eba61c" size="8132" />
-    <file uri="https://raw.githubusercontent.com/qpov/McLauncher/main/bin/com/launcher/AutoUpdater.class" path="bin/com/launcher/AutoUpdater.class" sha1="61a0dec804065bdb1d09224271ae1601dbd3ad4a" size="5934" />
+    <file uri="https://raw.githubusercontent.com/qpov/McLauncher/main/bin/com/launcher/AutoUpdater.class" path="bin/com/launcher/AutoUpdater.class" sha1="31223ba0fe6bf79347942cb68eb3a6fc4cc69031" size="3315" />
     <file uri="https://raw.githubusercontent.com/qpov/McLauncher/main/bin/com/launcher/ConfigLoader.class" path="bin/com/launcher/ConfigLoader.class" sha1="763820a14d9d1c5447f572b862526af8a8f12db7" size="871" />
     <file uri="https://raw.githubusercontent.com/qpov/McLauncher/main/bin/com/launcher/LauncherUI$1.class" path="bin/com/launcher/LauncherUI$1.class" sha1="f143da24f72a193a0a7e8beb0c15f758a5b2c773" size="1693" />
     <file uri="https://raw.githubusercontent.com/qpov/McLauncher/main/bin/com/launcher/LauncherUI$DownloadTask.class" path="bin/com/launcher/LauncherUI$DownloadTask.class" sha1="9a7f650632557c22f52ca8087c1779308e6cbbf0" size="1572" />
@@ -4047,7 +4047,7 @@
     <file uri="https://raw.githubusercontent.com/qpov/McLauncher/main/config/voicechat/voicechat-client.properties" path="config/voicechat/voicechat-client.properties" sha1="021208b2ed949fcacafaf095208ed8fadb70765c" size="4293" />
     <file uri="https://raw.githubusercontent.com/qpov/McLauncher/main/config/voicechat/voicechat-server.properties" path="config/voicechat/voicechat-server.properties" sha1="4f648f3da58840863fb74874b870f268f4f194a0" size="2502" />
     <file uri="https://raw.githubusercontent.com/qpov/McLauncher/main/config/voicechat/voicechat-volumes.properties" path="config/voicechat/voicechat-volumes.properties" sha1="4eaca99c316dc0e047aa47897d73689054c1474d" size="37" />
-    <file uri="https://raw.githubusercontent.com/qpov/McLauncher/main/generate-update-config.js" path="generate-update-config.js" sha1="63b623b41d8242b4bc53679b36f056af61aeaa31" size="2592" />
+    <file uri="https://raw.githubusercontent.com/qpov/McLauncher/main/generate-update-config.js" path="generate-update-config.js" sha1="c400520e2188d971be36fcd47f5126d5214583b2" size="1954" />
     <file uri="https://raw.githubusercontent.com/qpov/McLauncher/main/jdk-23/bin/api-ms-win-core-console-l1-1-0.dll" path="jdk-23/bin/api-ms-win-core-console-l1-1-0.dll" sha1="72473a4b33601a06f2f9aaa47645a1cad7469bf7" size="22008" />
     <file uri="https://raw.githubusercontent.com/qpov/McLauncher/main/jdk-23/bin/api-ms-win-core-console-l1-2-0.dll" path="jdk-23/bin/api-ms-win-core-console-l1-2-0.dll" sha1="44989d7eeacc4cb9b77b68decaaabab89efb0f2b" size="21968" />
     <file uri="https://raw.githubusercontent.com/qpov/McLauncher/main/jdk-23/bin/api-ms-win-core-datetime-l1-1-0.dll" path="jdk-23/bin/api-ms-win-core-datetime-l1-1-0.dll" sha1="e7178bc74ae55150f1af666964d9959815d6309b" size="22016" />
@@ -4633,7 +4633,7 @@
     <file uri="https://raw.githubusercontent.com/qpov/McLauncher/main/lib/v1/objects/a7e5a6024bfd3cd614625aa05629adf760020304/client.jar" path="lib/v1/objects/a7e5a6024bfd3cd614625aa05629adf760020304/client.jar" sha1="a7e5a6024bfd3cd614625aa05629adf760020304" size="28335587" />
     <file uri="https://raw.githubusercontent.com/qpov/McLauncher/main/logs/autoupdater.log" path="logs/autoupdater.log" sha1="180ffd254674557032d39237b8e3ea23d119a544" size="2165298" />
     <file uri="https://raw.githubusercontent.com/qpov/McLauncher/main/manifest.mf" path="manifest.mf" sha1="f696f807d8d3d0ff986fca54165a782926d9428d" size="148" />
-    <file uri="https://raw.githubusercontent.com/qpov/McLauncher/main/McLauncher.jar" path="McLauncher.jar" sha1="1c36673ccab16ceb88937419fba33ed568865ec1" size="19372" />
+    <file uri="https://raw.githubusercontent.com/qpov/McLauncher/main/McLauncher.jar" path="McLauncher.jar" sha1="1e34ea7953f465470185a98b2d46d926a8cf9e36" size="18151" />
     <file uri="https://raw.githubusercontent.com/qpov/McLauncher/main/native/glfw.dll" path="native/glfw.dll" sha1="2e19147110b9872a52814956bab151a7aa80ce58" size="496128" />
     <file uri="https://raw.githubusercontent.com/qpov/McLauncher/main/native/jemalloc.dll" path="native/jemalloc.dll" sha1="6403f8243ea983a225b3bcda6c821a0029ad9ee2" size="398336" />
     <file uri="https://raw.githubusercontent.com/qpov/McLauncher/main/native/jna2376941260962585108.dll" path="native/jna2376941260962585108.dll" sha1="27ff882ac271db547aee520b38e3ba9aa91e136c" size="273408" />
@@ -4644,7 +4644,7 @@
     <file uri="https://raw.githubusercontent.com/qpov/McLauncher/main/nickname.txt" path="nickname.txt" sha1="e53407cfe1a5156b9f0d1eed3bab5ef3ae75cfd8" size="6" />
     <file uri="https://raw.githubusercontent.com/qpov/McLauncher/main/Readme.md" path="Readme.md" sha1="59ff805294514fdfde3e49508f7a6ca294316189" size="519" />
     <file uri="https://raw.githubusercontent.com/qpov/McLauncher/main/servers.json" path="servers.json" sha1="7f2807c3ff882866a676ed5b43eb3e306f2ad976" size="320" />
-    <file uri="https://raw.githubusercontent.com/qpov/McLauncher/main/src/com/launcher/AutoUpdater.java" path="src/com/launcher/AutoUpdater.java" sha1="a2c3241e6973b85caa6f9e0d742fb59cc0c744f3" size="4235" />
+    <file uri="https://raw.githubusercontent.com/qpov/McLauncher/main/src/com/launcher/AutoUpdater.java" path="src/com/launcher/AutoUpdater.java" sha1="61db612c490628ecbb9d6f3d9c54d010269208f6" size="2806" />
     <file uri="https://raw.githubusercontent.com/qpov/McLauncher/main/src/com/launcher/ConfigLoader.java" path="src/com/launcher/ConfigLoader.java" sha1="8e45aa32d2ea9a1c646af8c07bfd54f885b4ea0a" size="424" />
     <file uri="https://raw.githubusercontent.com/qpov/McLauncher/main/src/com/launcher/LauncherUI.java" path="src/com/launcher/LauncherUI.java" sha1="84bc7a2ef41f08ead8d6d37fa8a84a572f6e5ffb" size="41892" />
     <file uri="https://raw.githubusercontent.com/qpov/McLauncher/main/src/com/launcher/ModConfig.java" path="src/com/launcher/ModConfig.java" sha1="ae5a9c6e874489da9c4c95b4ff82cbe2afa4af9a" size="103" />
