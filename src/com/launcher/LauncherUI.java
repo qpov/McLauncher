@@ -33,7 +33,7 @@ public class LauncherUI extends JFrame {
     private List<ModConfig> defaultMods;
 
     public LauncherUI() {
-        setTitle("QmLauncher 1.4.0");
+        setTitle("QmLauncher 1.5.0");
         setSize(960, 540);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
@@ -47,7 +47,8 @@ public class LauncherUI extends JFrame {
 
     // Изменённый метод loadConfigs() для избежания кэширования
     private void loadConfigs() {
-        String url = "https://raw.githubusercontent.com/qpov/QmLauncher/refs/heads/main/servers.json?t=" + System.currentTimeMillis();
+        String url = "https://raw.githubusercontent.com/qpov/QmLauncher/refs/heads/main/servers.json?t="
+                + System.currentTimeMillis();
         ServerList config = ConfigLoader.loadServerConfigs(url);
         if (config != null && config.servers != null) {
             serverConfigs = config.servers;
@@ -392,7 +393,7 @@ public class LauncherUI extends JFrame {
     private void downloadFile(String fileURL, File destinationFile) throws IOException {
         URL url = new URL(fileURL);
         try (InputStream inputStream = url.openStream();
-             FileOutputStream outputStream = new FileOutputStream(destinationFile)) {
+                FileOutputStream outputStream = new FileOutputStream(destinationFile)) {
             byte[] buffer = new byte[4096];
             int bytesRead;
             while ((bytesRead = inputStream.read(buffer)) != -1) {
@@ -456,7 +457,7 @@ public class LauncherUI extends JFrame {
         protected Void doInBackground() throws Exception {
             URL downloadUrl = new URL(url);
             try (InputStream in = downloadUrl.openStream();
-                 FileOutputStream out = new FileOutputStream(destination)) {
+                    FileOutputStream out = new FileOutputStream(destination)) {
                 byte[] buffer = new byte[4096];
                 int bytesRead;
                 while ((bytesRead = in.read(buffer)) != -1 && !isCancelled()) {
@@ -572,11 +573,12 @@ public class LauncherUI extends JFrame {
     private void runGame(File installDir, ServerConfig selectedServer, String nickname) {
         try {
             launchButton.setEnabled(false);
-
             String clientJarPath = new File(installDir, "client.jar").getAbsolutePath();
             String maxRam = ramField.getText().trim();
             String xmxParam = "-Xmx" + maxRam + "G";
-            String classpath = clientJarPath
+
+            // Общий список библиотек, одинаковый для обоих загрузчиков
+            String baseClasspath = clientJarPath
                     + ";lib/ll/night-config/toml/3.7.4/toml-3.7.4.jar"
                     + ";lib/com/fasterxml/jackson/core/jackson-annotations/2.13.4/jackson-annotations-2.13.4.jar"
                     + ";lib/com/fasterxml/jackson/core/jackson-core/2.13.4/jackson-core-2.13.4.jar"
@@ -726,28 +728,69 @@ public class LauncherUI extends JFrame {
                     // + ";lib/org/spongepowered/mixin/0.8.7/mixin-0.8.7.jar"
                     + ";lib/v1/objects/a7e5a6024bfd3cd614625aa05629adf760020304/client.jar";
 
-            ProcessBuilder pb = new ProcessBuilder(
-                    "java",
-                    xmxParam,
-                    "-Djava.library.path=native",
-                    "-cp", classpath,
-                    "net.fabricmc.loader.impl.launch.knot.KnotClient",
-                    "--accessToken", "dummy",
-                    "--uuid", "dummy-uuid",
-                    "--clientId", "dummy-clientid",
-                    "--xuid", "dummy-xuid",
-                    "--userType", "mojang",
-                    "--versionType", "release",
-                    "--version", getServerConfigByName((String) serverComboBox.getSelectedItem()).minecraft_version,
-                    "--gameDir", getInstallDirForServer((String) serverComboBox.getSelectedItem()).getAbsolutePath(),
-                    "--assetsDir", new File("assets").getAbsolutePath(),
-                    "--assetIndex", "19",
-                    "--username", nicknameField.getText().trim());
+            String finalClasspath;
+            String mainClass;
+            ProcessBuilder pb;
+
+            if (selectedServer.fabric_version != null && !selectedServer.fabric_version.trim().isEmpty()) {
+                // Если выбрана версия Fabric, добавляем загрузочную библиотеку Fabric и
+                // используем KnotClient
+                finalClasspath = baseClasspath
+                        + ";lib/net/fabricmc/fabric-loader/" + selectedServer.fabric_version + "/fabric-loader-"
+                        + selectedServer.fabric_version + ".jar"
+                        + ";lib/net/fabricmc/intermediary/1.21.4/intermediary-1.21.4.jar"
+                        + ";lib/net/fabricmc/sponge-mixin/0.15.4+mixin.0.8.7/sponge-mixin-0.15.4+mixin.0.8.7.jar";
+                mainClass = "net.fabricmc.loader.impl.launch.knot.KnotClient";
+                pb = new ProcessBuilder(
+                        "java",
+                        xmxParam,
+                        "-Djava.library.path=native",
+                        "-cp", finalClasspath,
+                        mainClass,
+                        "--accessToken", "dummy",
+                        "--uuid", "dummy-uuid",
+                        "--clientId", "dummy-clientid",
+                        "--xuid", "dummy-xuid",
+                        "--userType", "mojang",
+                        "--versionType", "release",
+                        "--version", selectedServer.minecraft_version,
+                        "--gameDir", installDir.getAbsolutePath(),
+                        "--assetsDir", new File("assets").getAbsolutePath(),
+                        "--assetIndex", "19",
+                        "--username", nickname);
+            } else if (selectedServer.forge_version != null && !selectedServer.forge_version.trim().isEmpty()) {
+                // Если выбрана версия Forge, добавляем загрузочную библиотеку Forge и
+                // используем основной класс клиента
+                finalClasspath = baseClasspath
+                        + ";lib/net/minecraftforge/forge/" + selectedServer.forge_version + "/forge-"
+                        + selectedServer.forge_version + "-client.jar";
+                mainClass = "net.minecraft.client.main.Main";
+                pb = new ProcessBuilder(
+                        "java",
+                        xmxParam,
+                        "-Djava.library.path=native",
+                        "-cp", finalClasspath,
+                        mainClass,
+                        "--accessToken", "dummy",
+                        "--uuid", "dummy-uuid",
+                        "--clientId", "dummy-clientid",
+                        "--xuid", "dummy-xuid",
+                        "--version", selectedServer.minecraft_version,
+                        "--gameDir", installDir.getAbsolutePath(),
+                        "--assetsDir", new File("assets").getAbsolutePath(),
+                        "--assetIndex", "19", // добавляем этот параметр для ассетов
+                        "--username", nickname);
+            } else {
+                throw new IllegalArgumentException("Не удалось определить тип загрузчика для выбранного сервера.");
+            }
+
             pb.directory(new File("."));
             pb.inheritIO();
-
             Process process = pb.start();
-            JOptionPane.showMessageDialog(this, "Игра запускается через Fabric Loader...");
+            String message = (selectedServer.fabric_version != null && !selectedServer.fabric_version.trim().isEmpty())
+                    ? "Игра запускается через Fabric Loader..."
+                    : "Игра запускается через Forge...";
+            JOptionPane.showMessageDialog(this, message);
 
             new Thread(() -> {
                 try {
@@ -755,13 +798,11 @@ public class LauncherUI extends JFrame {
                 } catch (InterruptedException ex) {
                     ex.printStackTrace();
                 }
-                SwingUtilities.invokeLater(() -> {
-                    launchButton.setEnabled(true);
-                });
+                SwingUtilities.invokeLater(() -> launchButton.setEnabled(true));
             }).start();
         } catch (IOException ex) {
             JOptionPane.showMessageDialog(this,
-                    "Ошибка при запуске игры через Fabric Loader: " + ex.getMessage(),
+                    "Ошибка при запуске игры: " + ex.getMessage(),
                     "Ошибка", JOptionPane.ERROR_MESSAGE);
             ex.printStackTrace();
             launchButton.setEnabled(true);
@@ -788,13 +829,16 @@ public class LauncherUI extends JFrame {
 
     private class DigitFilter extends DocumentFilter {
         @Override
-        public void insertString(FilterBypass fb, int offset, String string, AttributeSet attr) throws BadLocationException {
+        public void insertString(FilterBypass fb, int offset, String string, AttributeSet attr)
+                throws BadLocationException {
             if (string.matches("\\d+")) {
                 super.insertString(fb, offset, string, attr);
             }
         }
+
         @Override
-        public void replace(FilterBypass fb, int offset, int length, String text, AttributeSet attrs) throws BadLocationException {
+        public void replace(FilterBypass fb, int offset, int length, String text, AttributeSet attrs)
+                throws BadLocationException {
             if (text.matches("\\d+")) {
                 super.replace(fb, offset, length, text, attrs);
             }
