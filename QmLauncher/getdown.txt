@@ -13,8 +13,8 @@ code = lib/flatlaf-3.5.4.jar
 resources = assets/**
 resources = servers.json
 resources = getdown-launcher-1.8.7.jar
-resources = lib
-resources = jdk-23
+resources = lib/**
+resources = jdk-23/**
 
 # Главный класс приложения
 class = com.launcher.LauncherUI
