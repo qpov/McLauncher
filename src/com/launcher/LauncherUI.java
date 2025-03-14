@@ -12,12 +12,12 @@ import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Properties;
 
 public class LauncherUI extends JFrame {
 
-    private static final String NICKNAME_FILE = "nickname.txt";
-    private static final String THEME_FILE = "theme.txt";
-    private static final String RAM_FILE = "ram.txt";
+    private static final String SETTINGS_FILE = "settings.txt";
+    private Properties settings = new Properties();
 
     private JTextField nicknameField;
     private JTextField ramField;
@@ -27,17 +27,19 @@ public class LauncherUI extends JFrame {
     private JButton reinstallGameButton;
     private JButton toggleThemeButton;
     private JButton toggleModsButton;
+    private JCheckBox hideLauncherCheckBox;
     private JPanel modPanel;
 
     private List<ServerConfig> serverConfigs;
     private List<ModConfig> defaultMods;
 
     public LauncherUI() {
-        setTitle("QmLauncher 1.5.0");
+        setTitle("QmLauncher 1.6.0");
         setSize(960, 540);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
 
+        loadSettings();
         loadConfigs();
         loadNickname();
         loadRam();
@@ -45,7 +47,37 @@ public class LauncherUI extends JFrame {
         updateLaunchButton();
     }
 
-    // Изменённый метод loadConfigs() для избежания кэширования
+    private void loadSettings() {
+        File file = new File(SETTINGS_FILE);
+        if (file.exists()) {
+            try (FileInputStream fis = new FileInputStream(file)) {
+                settings.load(fis);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        if (!settings.containsKey("nickname")) {
+            settings.setProperty("nickname", "Player");
+        }
+        if (!settings.containsKey("theme")) {
+            settings.setProperty("theme", "dark");
+        }
+        if (!settings.containsKey("ram")) {
+            settings.setProperty("ram", "2");
+        }
+        if (!settings.containsKey("hideLauncher")) {
+            settings.setProperty("hideLauncher", "true");
+        }
+    }
+
+    private void saveSettings() {
+        try (FileOutputStream fos = new FileOutputStream(SETTINGS_FILE)) {
+            settings.store(fos, "Launcher Settings");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
     private void loadConfigs() {
         String url = "https://raw.githubusercontent.com/qpov/QmLauncher/refs/heads/main/servers.json?t="
                 + System.currentTimeMillis();
@@ -59,6 +91,17 @@ public class LauncherUI extends JFrame {
         }
     }
 
+    private void loadNickname() {
+        String nick = settings.getProperty("nickname");
+        nicknameField = new JTextField(nick, 15);
+    }
+
+    private void loadRam() {
+        String ram = settings.getProperty("ram");
+        ramField = new JTextField(ram, 5);
+        ((AbstractDocument) ramField.getDocument()).setDocumentFilter(new DigitFilter());
+    }
+
     private File getInstallDirForServer(String serverName) {
         File dir = new File("version", serverName);
         if (!dir.exists()) {
@@ -67,99 +110,19 @@ public class LauncherUI extends JFrame {
         return dir;
     }
 
-    private void loadNickname() {
-        File f = new File(NICKNAME_FILE);
-        String nick = "Player";
-        if (f.exists()) {
-            try (BufferedReader reader = new BufferedReader(new FileReader(f))) {
-                String line = reader.readLine();
-                if (line != null && !line.trim().isEmpty()) {
-                    nick = line.trim();
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-        nicknameField = new JTextField(nick, 15);
-    }
-
-    private void loadRam() {
-        File f = new File(RAM_FILE);
-        String ram = "2"; // значение по умолчанию – 2 ГБ
-        if (f.exists()) {
-            try (BufferedReader reader = new BufferedReader(new FileReader(f))) {
-                String line = reader.readLine();
-                if (line != null && !line.trim().isEmpty()) {
-                    ram = line.trim();
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-        ramField = new JTextField(ram, 5);
-        ((AbstractDocument) ramField.getDocument()).setDocumentFilter(new DigitFilter());
-    }
-
-    private void saveRam(String ram) {
-        try (PrintWriter writer = new PrintWriter(new FileWriter(RAM_FILE))) {
-            writer.println(ram);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    private void saveNickname(String nick) {
-        try (PrintWriter writer = new PrintWriter(new FileWriter(NICKNAME_FILE))) {
-            writer.println(nick);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    private String loadTheme() {
-        File f = new File(THEME_FILE);
-        String theme = "dark";
-        if (f.exists()) {
-            try (BufferedReader reader = new BufferedReader(new FileReader(f))) {
-                String line = reader.readLine();
-                if (line != null && (line.equalsIgnoreCase("dark") || line.equalsIgnoreCase("light"))) {
-                    theme = line.trim().toLowerCase();
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-        return theme;
-    }
-
-    private void saveTheme(String theme) {
-        try (PrintWriter writer = new PrintWriter(new FileWriter(THEME_FILE))) {
-            writer.println(theme);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    private void applyTheme(String theme) {
-        try {
-            if (theme.equals("dark")) {
-                UIManager.setLookAndFeel(new FlatDarkLaf());
-            } else {
-                UIManager.setLookAndFeel(new FlatLightLaf());
-            }
-            SwingUtilities.updateComponentTreeUI(this);
-        } catch (Exception ex) {
-            ex.printStackTrace();
-        }
-    }
-
     private void initUI() {
-        String theme = loadTheme();
+        String theme = settings.getProperty("theme");
         applyTheme(theme);
+
+        nicknameField = new JTextField(settings.getProperty("nickname"), 15);
+        ramField = new JTextField(settings.getProperty("ram"), 5);
+        ((AbstractDocument) ramField.getDocument()).setDocumentFilter(new DigitFilter());
+        hideLauncherCheckBox = new JCheckBox("Скрывать лаунчер при запуске игры",
+                Boolean.parseBoolean(settings.getProperty("hideLauncher")));
 
         JPanel panel = new JPanel(new BorderLayout(10, 10));
 
-        // Верхняя панель: Ник, Версия и Макс. ОЗУ (ГБ)
+        // Верхняя панель
         JPanel topPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 10));
         topPanel.add(new JLabel("Ник:"));
         topPanel.add(nicknameField);
@@ -177,9 +140,10 @@ public class LauncherUI extends JFrame {
         topPanel.add(serverComboBox);
         topPanel.add(new JLabel("Макс. ОЗУ (ГБ):"));
         topPanel.add(ramField);
+        topPanel.add(hideLauncherCheckBox);
         panel.add(topPanel, BorderLayout.NORTH);
 
-        // Панель для модов с кнопкой переключения всех модов
+        // Панель модов
         modPanel = new JPanel();
         modPanel.setBorder(BorderFactory.createTitledBorder("Моды"));
         modPanel.setLayout(new BoxLayout(modPanel, BoxLayout.Y_AXIS));
@@ -211,7 +175,6 @@ public class LauncherUI extends JFrame {
 
         // Нижняя панель кнопок
         JPanel buttonsPanel = new JPanel(new GridLayout(2, 2, 5, 5));
-
         launchButton = new JButton();
         launchButton.addActionListener(e -> {
             String selectedServerName = (String) serverComboBox.getSelectedItem();
@@ -228,8 +191,10 @@ public class LauncherUI extends JFrame {
                 if (nick.isEmpty()) {
                     nick = "Player";
                 }
-                saveNickname(nick);
-                saveRam(ramField.getText().trim());
+                settings.setProperty("nickname", nick);
+                settings.setProperty("ram", ramField.getText().trim());
+                settings.setProperty("hideLauncher", Boolean.toString(hideLauncherCheckBox.isSelected()));
+                saveSettings();
                 if (!updateModsForServer(selectedServer)) {
                     JOptionPane.showMessageDialog(this,
                             "Ошибка при обновлении модов для выбранного сервера.",
@@ -237,7 +202,7 @@ public class LauncherUI extends JFrame {
                     return;
                 }
                 applyModSelection(selectedServer);
-                runGame(installDir, selectedServer, nick);
+                runGame(getInstallDirForServer(selectedServerName), selectedServer, nick);
             } else {
                 installGameWithProgress();
             }
@@ -265,9 +230,7 @@ public class LauncherUI extends JFrame {
         buttonsPanel.add(openFolderButton);
 
         reinstallGameButton = new JButton("Переустановить игру");
-        reinstallGameButton.addActionListener(e -> {
-            installGameWithProgress();
-        });
+        reinstallGameButton.addActionListener(e -> installGameWithProgress());
         buttonsPanel.add(reinstallGameButton);
 
         toggleThemeButton = new JButton("Сменить тему");
@@ -283,6 +246,28 @@ public class LauncherUI extends JFrame {
         add(panel);
     }
 
+    private String loadTheme() {
+        return settings.getProperty("theme");
+    }
+
+    private void saveTheme(String theme) {
+        settings.setProperty("theme", theme);
+        saveSettings();
+    }
+
+    private void applyTheme(String theme) {
+        try {
+            if (theme.equals("dark")) {
+                UIManager.setLookAndFeel(new FlatDarkLaf());
+            } else {
+                UIManager.setLookAndFeel(new FlatLightLaf());
+            }
+            SwingUtilities.updateComponentTreeUI(this);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+    }
+
     private void updateLaunchButton() {
         String selectedServerName = (String) serverComboBox.getSelectedItem();
         File installDir = getInstallDirForServer(selectedServerName);
@@ -293,6 +278,7 @@ public class LauncherUI extends JFrame {
         }
     }
 
+    // Реальная реализация обновления панели модов из вашей рабочей версии
     private void updateModPanel() {
         modPanel.removeAll();
         String selectedName = (String) serverComboBox.getSelectedItem();
@@ -365,6 +351,7 @@ public class LauncherUI extends JFrame {
         modPanel.repaint();
     }
 
+    // Реальная проверка изменений модов
     private boolean modsModified(List<ModConfig> requiredMods) {
         String selectedName = (String) serverComboBox.getSelectedItem();
         File installDir = getInstallDirForServer(selectedName);
@@ -390,89 +377,7 @@ public class LauncherUI extends JFrame {
         return false;
     }
 
-    private void downloadFile(String fileURL, File destinationFile) throws IOException {
-        URL url = new URL(fileURL);
-        try (InputStream inputStream = url.openStream();
-                FileOutputStream outputStream = new FileOutputStream(destinationFile)) {
-            byte[] buffer = new byte[4096];
-            int bytesRead;
-            while ((bytesRead = inputStream.read(buffer)) != -1) {
-                outputStream.write(buffer, 0, bytesRead);
-            }
-        }
-    }
-
-    private void installGameWithProgress() {
-        String selectedServerName = (String) serverComboBox.getSelectedItem();
-        ServerConfig selectedServer = getServerConfigByName(selectedServerName);
-        if (selectedServer != null) {
-            File installDir = getInstallDirForServer(selectedServerName);
-            JDialog progressDialog = new JDialog(this, "Загрузка...", true);
-            JProgressBar progressBar = new JProgressBar(0, 100);
-            progressBar.setIndeterminate(true);
-            JButton cancelButton = new JButton("Отмена");
-
-            JPanel p = new JPanel(new BorderLayout(10, 10));
-            p.add(new JLabel("Скачивание игры..."), BorderLayout.NORTH);
-            p.add(progressBar, BorderLayout.CENTER);
-            p.add(cancelButton, BorderLayout.SOUTH);
-            progressDialog.getContentPane().add(p);
-            progressDialog.setSize(300, 120);
-            progressDialog.setLocationRelativeTo(this);
-
-            launchButton.setEnabled(false);
-
-            DownloadTask worker = new DownloadTask(selectedServer.download_link, new File(installDir, "client.jar")) {
-                @Override
-                protected void done() {
-                    progressDialog.dispose();
-                    launchButton.setEnabled(true);
-                    if (!isCancelled()) {
-                        JOptionPane.showMessageDialog(LauncherUI.this,
-                                "Игра скачана успешно!\nПуть установки: " + installDir.getAbsolutePath());
-                        updateLaunchButton();
-                    }
-                }
-            };
-
-            cancelButton.addActionListener(e -> worker.cancel(true));
-
-            worker.execute();
-            progressDialog.setVisible(true);
-        } else {
-            JOptionPane.showMessageDialog(this, "Конфигурация для выбранного сервера не найдена.");
-        }
-    }
-
-    private class DownloadTask extends SwingWorker<Void, Integer> {
-        private final String url;
-        private final File destination;
-
-        public DownloadTask(String url, File destination) {
-            this.url = url;
-            this.destination = destination;
-        }
-
-        @Override
-        protected Void doInBackground() throws Exception {
-            URL downloadUrl = new URL(url);
-            try (InputStream in = downloadUrl.openStream();
-                    FileOutputStream out = new FileOutputStream(destination)) {
-                byte[] buffer = new byte[4096];
-                int bytesRead;
-                while ((bytesRead = in.read(buffer)) != -1 && !isCancelled()) {
-                    out.write(buffer, 0, bytesRead);
-                }
-            }
-            return null;
-        }
-
-        @Override
-        protected void done() {
-            // Диалог закрывается в installGameWithProgress()
-        }
-    }
-
+    // Реальная реализация обновления модов, как в вашем старом коде
     private boolean updateModsForServer(ServerConfig selectedServer) {
         try {
             File installDir = getInstallDirForServer(selectedServer.name);
@@ -532,6 +437,7 @@ public class LauncherUI extends JFrame {
         }
     }
 
+    // Реальная реализация применения выбранных модов
     private void applyModSelection(ServerConfig selectedServer) {
         File installDir = getInstallDirForServer(selectedServer.name);
         File gameModsFolder = new File(installDir, "mods");
@@ -570,6 +476,89 @@ public class LauncherUI extends JFrame {
         }
     }
 
+    private void downloadFile(String fileURL, File destinationFile) throws IOException {
+        URL url = new URL(fileURL);
+        try (InputStream inputStream = url.openStream();
+                FileOutputStream outputStream = new FileOutputStream(destinationFile)) {
+            byte[] buffer = new byte[4096];
+            int bytesRead;
+            while ((bytesRead = inputStream.read(buffer)) != -1) {
+                outputStream.write(buffer, 0, bytesRead);
+            }
+        }
+    }
+
+    private void installGameWithProgress() {
+        String selectedServerName = (String) serverComboBox.getSelectedItem();
+        ServerConfig selectedServer = getServerConfigByName(selectedServerName);
+        if (selectedServer != null) {
+            File installDir = getInstallDirForServer(selectedServerName);
+            JDialog progressDialog = new JDialog(this, "Загрузка...", true);
+            JProgressBar progressBar = new JProgressBar(0, 100);
+            progressBar.setIndeterminate(true);
+            JButton cancelButton = new JButton("Отмена");
+
+            JPanel p = new JPanel(new BorderLayout(10, 10));
+            p.add(new JLabel("Скачивание игры..."), BorderLayout.NORTH);
+            p.add(progressBar, BorderLayout.CENTER);
+            p.add(cancelButton, BorderLayout.SOUTH);
+            progressDialog.getContentPane().add(p);
+            progressDialog.setSize(300, 120);
+            progressDialog.setLocationRelativeTo(this);
+
+            launchButton.setEnabled(false);
+
+            DownloadTask worker = new DownloadTask(selectedServer.download_link, new File(installDir, "client.jar")) {
+                @Override
+                protected void done() {
+                    progressDialog.dispose();
+                    launchButton.setEnabled(true);
+                    if (!isCancelled()) {
+                        JOptionPane.showMessageDialog(LauncherUI.this,
+                                "Игра скачана успешно!\nПуть установки: " + installDir.getAbsolutePath());
+                        updateLaunchButton();
+                    }
+                }
+            };
+
+            cancelButton.addActionListener(e -> worker.cancel(true));
+            worker.execute();
+            progressDialog.setVisible(true);
+        } else {
+            JOptionPane.showMessageDialog(this, "Конфигурация для выбранного сервера не найдена.");
+        }
+    }
+
+    private class DownloadTask extends SwingWorker<Void, Integer> {
+        private final String url;
+        private final File destination;
+
+        public DownloadTask(String url, File destination) {
+            this.url = url;
+            this.destination = destination;
+        }
+
+        @Override
+        protected Void doInBackground() throws Exception {
+            URL downloadUrl = new URL(url);
+            try (InputStream in = downloadUrl.openStream();
+                    FileOutputStream out = new FileOutputStream(destination)) {
+                byte[] buffer = new byte[4096];
+                int bytesRead;
+                while ((bytesRead = in.read(buffer)) != -1 && !isCancelled()) {
+                    out.write(buffer, 0, bytesRead);
+                }
+            }
+            return null;
+        }
+
+        @Override
+        protected void done() {
+            // Диалог закрывается в installGameWithProgress()
+        }
+    }
+
+    // Реальная реализация запуска игры с использованием общего списка библиотек
     private void runGame(File installDir, ServerConfig selectedServer, String nickname) {
         try {
             launchButton.setEnabled(false);
@@ -577,7 +566,7 @@ public class LauncherUI extends JFrame {
             String maxRam = ramField.getText().trim();
             String xmxParam = "-Xmx" + maxRam + "G";
 
-            // Общий список библиотек, одинаковый для обоих загрузчиков
+            // Общий базовый classpath
             String baseClasspath = clientJarPath
                     + ";lib/ll/night-config/toml/3.7.4/toml-3.7.4.jar"
                     + ";lib/com/fasterxml/jackson/core/jackson-annotations/2.13.4/jackson-annotations-2.13.4.jar"
@@ -733,8 +722,6 @@ public class LauncherUI extends JFrame {
             ProcessBuilder pb;
 
             if (selectedServer.fabric_version != null && !selectedServer.fabric_version.trim().isEmpty()) {
-                // Если выбрана версия Fabric, добавляем загрузочную библиотеку Fabric и
-                // используем KnotClient
                 finalClasspath = baseClasspath
                         + ";lib/net/fabricmc/fabric-loader/" + selectedServer.fabric_version + "/fabric-loader-"
                         + selectedServer.fabric_version + ".jar"
@@ -754,13 +741,12 @@ public class LauncherUI extends JFrame {
                         "--userType", "mojang",
                         "--versionType", "release",
                         "--version", selectedServer.minecraft_version,
-                        "--gameDir", installDir.getAbsolutePath(),
+                        "--gameDir",
+                        getInstallDirForServer((String) serverComboBox.getSelectedItem()).getAbsolutePath(),
                         "--assetsDir", new File("assets").getAbsolutePath(),
                         "--assetIndex", "19",
-                        "--username", nickname);
+                        "--username", nicknameField.getText().trim());
             } else if (selectedServer.forge_version != null && !selectedServer.forge_version.trim().isEmpty()) {
-                // Если выбрана версия Forge, добавляем загрузочную библиотеку Forge и
-                // используем основной класс клиента
                 finalClasspath = baseClasspath
                         + ";lib/net/minecraftforge/forge/" + selectedServer.forge_version + "/forge-"
                         + selectedServer.forge_version + "-client.jar";
@@ -776,10 +762,11 @@ public class LauncherUI extends JFrame {
                         "--clientId", "dummy-clientid",
                         "--xuid", "dummy-xuid",
                         "--version", selectedServer.minecraft_version,
-                        "--gameDir", installDir.getAbsolutePath(),
+                        "--gameDir",
+                        getInstallDirForServer((String) serverComboBox.getSelectedItem()).getAbsolutePath(),
                         "--assetsDir", new File("assets").getAbsolutePath(),
-                        "--assetIndex", "19", // добавляем этот параметр для ассетов
-                        "--username", nickname);
+                        "--assetIndex", "19",
+                        "--username", nicknameField.getText().trim());
             } else {
                 throw new IllegalArgumentException("Не удалось определить тип загрузчика для выбранного сервера.");
             }
@@ -792,13 +779,20 @@ public class LauncherUI extends JFrame {
                     : "Игра запускается через Forge...";
             JOptionPane.showMessageDialog(this, message);
 
+            if (Boolean.parseBoolean(settings.getProperty("hideLauncher"))) {
+                setVisible(false);
+            }
+
             new Thread(() -> {
                 try {
                     process.waitFor();
                 } catch (InterruptedException ex) {
                     ex.printStackTrace();
                 }
-                SwingUtilities.invokeLater(() -> launchButton.setEnabled(true));
+                SwingUtilities.invokeLater(() -> {
+                    launchButton.setEnabled(true);
+                    setVisible(true);
+                });
             }).start();
         } catch (IOException ex) {
             JOptionPane.showMessageDialog(this,
