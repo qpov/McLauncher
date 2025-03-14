@@ -1,24 +1,54 @@
-<?xml version="1.0" encoding="UTF-8"?>
 <launch4jConfig>
-  <dontWrapJar>false</dontWrapJar>
-  <headerType>gui</headerType>
-  <jar>A:\Projects\QmLauncher\getdown-launcher-1.8.7.jar</jar>
-  <outfile>A:\Projects\QmLauncher\QmLauncher\QmLauncher.exe</outfile>
-  <errTitle></errTitle>
-  <cmdLine>.</cmdLine>
-  <chdir>.</chdir>
-  <priority>normal</priority>
-  <downloadUrl></downloadUrl>
-  <supportUrl></supportUrl>
-  <stayAlive>false</stayAlive>
-  <restartOnCrash>false</restartOnCrash>
-  <manifest></manifest>
-  <icon>A:\Downloads\3aa1759f268efe78a659871ee77b9ddf.ico</icon>
-  <jre>
-    <path>%JAVA_HOME%;%PATH%</path>
-    <requiresJdk>false</requiresJdk>
-    <requires64Bit>false</requires64Bit>
-    <minVersion></minVersion>
-    <maxVersion></maxVersion>
-  </jre>
+    <!-- Не вшиваем jar внутрь exe, а оборачиваем его -->
+    <dontWrapJar>false</dontWrapJar>
+
+    <!-- Приложение будет GUI, без консольного окна (headerType="gui"). 
+         Если нужно окно консоли - укажите console -->
+    <headerType>gui</headerType>
+
+    <!-- Путь к jar-файлу, который надо запускать (Getdown-Launcher) -->
+    <jar>A:\Projects\QmLauncher\getdown-launcher-1.8.7.jar</jar>
+
+    <!-- Путь и имя выходного exe-файла -->
+    <outfile>A:\Projects\QmLauncher\QmLauncher\QmLauncher.exe</outfile>
+
+    <errTitle/>
+    
+    <!-- Аргументы командной строки для jar. 
+         Здесь "myapp" означает, что Getdown-Launcher 
+         будет искать getdown.txt в папке "myapp" рядом с exe. 
+         Если у вас всё лежит в той же папке, можно указать "." -->
+    <cmdLine>.</cmdLine>
+
+    <!-- Рабочая директория. "." означает текущую папку, 
+         где лежит exe -->
+    <chdir>.</chdir>
+
+    <priority>normal</priority>
+    <downloadUrl/>
+    <supportUrl/>
+    <stayAlive>false</stayAlive>
+    <restartOnCrash>false</restartOnCrash>
+    <manifest/>
+
+    <!-- Путь к иконке (ico-файл), если хотите кастомную иконку -->
+    <icon>A:\Downloads\3aa1759f268efe78a659871ee77b9ddf.ico</icon>
+
+    <!-- Настройки для JRE -->
+    <jre>
+        <!-- Папка, в которой лежит «вшитая» JRE, например .\jre 
+             (должна находиться рядом с exe). -->
+        <path>.\jdk-23</path>
+
+        <!-- Если нужно, чтобы была 64-битная JRE, установите true, 
+             но тогда саму JRE тоже кладите 64-битную. -->
+        <requires64Bit>false</requires64Bit>
+
+        <!-- Не требуется полный JDK -->
+        <requiresJdk>false</requiresJdk>
+
+        <!-- Минимальная версия JRE -->
+        <minVersion>1.8.0</minVersion>
+        <maxVersion></maxVersion>
+    </jre>
 </launch4jConfig>
