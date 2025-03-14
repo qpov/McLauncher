@@ -34,7 +34,7 @@ public class LauncherUI extends JFrame {
     private List<ModConfig> defaultMods;
 
     public LauncherUI() {
-        setTitle("QmLauncher 1.6.1");
+        setTitle("QmLauncher 1.6.2");
         setSize(960, 540);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
@@ -122,7 +122,7 @@ public class LauncherUI extends JFrame {
 
         JPanel panel = new JPanel(new BorderLayout(10, 10));
 
-        // Верхняя панель
+        // Верхняя панель: Ник, Версия, ОЗУ и галочка скрытия лаунчера
         JPanel topPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 10));
         topPanel.add(new JLabel("Ник:"));
         topPanel.add(nicknameField);
@@ -278,7 +278,7 @@ public class LauncherUI extends JFrame {
         }
     }
 
-    // Реальная реализация обновления панели модов
+    // Реальная реализация обновления панели модов (как в вашей рабочей версии)
     private void updateModPanel() {
         modPanel.removeAll();
         String selectedName = (String) serverComboBox.getSelectedItem();
@@ -558,7 +558,7 @@ public class LauncherUI extends JFrame {
         }
     }
 
-    // Реальная реализация запуска игры с использованием общего списка библиотек
+    // Запуск игры с использованием общего списка библиотек и вызовом автообновления
     private void runGame(File installDir, ServerConfig selectedServer, String nickname) {
         try {
             launchButton.setEnabled(false);
@@ -788,6 +788,7 @@ public class LauncherUI extends JFrame {
                 SwingUtilities.invokeLater(() -> {
                     launchButton.setEnabled(true);
                     setVisible(true);
+                    // После того как лаунчер снова становится видимым, инициируем проверку обновлений
                     checkForUpdates();
                 });
             }).start();
@@ -803,7 +804,7 @@ public class LauncherUI extends JFrame {
     // Метод для проверки и запуска автообновления через Getdown
     private void checkForUpdates() {
         try {
-            // Предполагается, что getdown-launcher-1.8.7.jar используется для автообновления
+            // Используем getdown-launcher-1.8.7.jar для автообновления
             ProcessBuilder pb = new ProcessBuilder("java", "-jar", "getdown-launcher-1.8.7.jar");
             pb.directory(new File("."));
             Process updateProcess = pb.start();
