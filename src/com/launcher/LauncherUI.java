@@ -333,17 +333,38 @@ public class LauncherUI extends JFrame {
         }
 
         private File combineParts(String prefix, List<GHFileInfo> parts) throws IOException {
-            // Определяем расширение по первой части
-            String lower = parts.get(0).name.toLowerCase();
-            String ext = lower.contains(".zip.") ? ".zip" : ".7z";
-            File combinedFile = new File(prefix + ext);
-            if (combinedFile.exists())
+            // Определяем, какой формат: если хотя бы в одном имени есть ".zip.", считаем zip, иначе .7z
+            // (или используйте логику как у вас — например, если name содержит ".zip.")
+            boolean isZip = false;
+            for (GHFileInfo fi : parts) {
+                if (fi.name.toLowerCase().contains(".zip.")) {
+                    isZip = true;
+                    break;
+                }
+            }
+        
+            // Изначально prefix, например, "native.7z" (без .001)
+            // Если prefix уже заканчивается на ".7z" или ".zip", удаляем, чтобы не было двойного .7z.7z
+            if (prefix.endsWith(".7z")) {
+                prefix = prefix.substring(0, prefix.length() - 3); // убираем ".7z"
+            } else if (prefix.endsWith(".zip")) {
+                prefix = prefix.substring(0, prefix.length() - 4); // убираем ".zip"
+            }
+        
+            // Добавляем нужное расширение
+            String ext = isZip ? ".zip" : ".7z";
+        
+            File combinedFile = new File(prefix + ext); // напр. "native.7z" или "assets.7z"
+            if (combinedFile.exists()) {
                 combinedFile.delete();
+            }
+        
             try (FileOutputStream fos = new FileOutputStream(combinedFile)) {
                 for (GHFileInfo fi : parts) {
                     System.out.println("Скачивание части: " + fi.name);
                     File tempPart = File.createTempFile("archpart", ".part");
                     downloadFile(fi.downloadUrl, tempPart);
+        
                     try (FileInputStream fis = new FileInputStream(tempPart)) {
                         byte[] buf = new byte[4096];
                         int read;
@@ -355,7 +376,7 @@ public class LauncherUI extends JFrame {
                 }
             }
             return combinedFile;
-        }
+        }        
 
         private void extractArchive(File archive, File destDir) throws IOException {
             String name = archive.getName().toLowerCase();
