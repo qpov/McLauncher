@@ -1,6 +1,0 @@
-#Launcher Settings
-#Sat Mar 15 00:26:06 GMT+05:00 2025
-hideLauncher=true
-nickname=Player
-ram=2
-theme=dark
