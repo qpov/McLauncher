@@ -5,6 +5,7 @@ import java.io.FileReader;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.net.URL;
+import java.net.URLConnection;
 
 public class ConfigLoader {
     public static ServerList loadServerConfigs(String filePath) {
@@ -12,7 +13,10 @@ public class ConfigLoader {
             Reader reader;
             if (filePath.startsWith("http")) {
                 URL url = new URL(filePath);
-                reader = new InputStreamReader(url.openStream());
+                URLConnection conn = url.openConnection();
+                conn.setConnectTimeout(5000);
+                conn.setReadTimeout(5000);
+                reader = new InputStreamReader(conn.getInputStream());
             } else {
                 reader = new FileReader(filePath);
             }

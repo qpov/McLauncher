@@ -1,6 +1,6 @@
 .git
 .gitignore
-jdk-23
+jdk-21.0.6
 *.log
 logs
 nickname.txt

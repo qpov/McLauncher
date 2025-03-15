@@ -2,7 +2,7 @@
 <launch4jConfig>
   <dontWrapJar>false</dontWrapJar>
   <headerType>gui</headerType>
-  <jar>A:\Projects\QmLauncher\getdown-launcher-1.8.7.jar</jar>
+  <jar>A:\Projects\QmLauncher\QmLauncher\getdown-launcher-1.8.7.jar</jar>
   <outfile>A:\Projects\QmLauncher\QmLauncher\QmLauncher.exe</outfile>
   <errTitle></errTitle>
   <cmdLine>.</cmdLine>
@@ -15,10 +15,10 @@
   <manifest></manifest>
   <icon>A:\Downloads\3aa1759f268efe78a659871ee77b9ddf.ico</icon>
   <jre>
-    <path>.\jre1.8.0_441</path>
+    <path>.\jdk-21.0.6</path>
     <requiresJdk>false</requiresJdk>
     <requires64Bit>false</requires64Bit>
-    <minVersion>1.8.0</minVersion>
+    <minVersion>21.0.6</minVersion>
     <maxVersion></maxVersion>
   </jre>
 </launch4jConfig>
