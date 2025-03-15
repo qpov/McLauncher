@@ -1,5 +1,5 @@
 getdown.txt = 861840c98f3d920a124c2e1d88805d8e
-QmLauncher.jar = 2eff2c3c1b99fc74337d52f703ace4e2
+QmLauncher.jar = 188fd1e56dc98187bc948297a235f516
 lib/com/google/code/gson/gson/2.11.0/gson-2.11.0.jar = 836907c5b887300ebea0e8c076528682
 lib/flatlaf-3.5.4.jar = 93e1bd647dc1a6ebcd90893cf9b89e2a
-digest.txt = 8adbd08c9f3c822f07d9d8ca64fe9f64
+digest.txt = a3fc06689385273013063cdaed67d127
