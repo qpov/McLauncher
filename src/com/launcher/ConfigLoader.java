@@ -11,11 +11,12 @@ public class ConfigLoader {
     public static ServerList loadServerConfigs(String filePath) {
         try {
             Reader reader;
-            if (filePath.startsWith("https://raw.githubusercontent.com/qpov/QmLauncher/refs/heads/main")) {
+            if (filePath.startsWith("https")) {
                 URL url = new URL(filePath);
                 URLConnection conn = url.openConnection();
-                conn.setConnectTimeout(5000);
-                conn.setReadTimeout(5000);
+                // Увеличиваем таймаут до 10 секунд
+                conn.setConnectTimeout(10000);
+                conn.setReadTimeout(10000);
                 reader = new InputStreamReader(conn.getInputStream());
             } else {
                 reader = new FileReader(filePath);

@@ -5,9 +5,6 @@ import com.formdev.flatlaf.FlatLightLaf;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
-// Если нужно распаковывать .7z, добавьте commons-compress в Class-Path:
-import org.apache.commons.compress.archivers.sevenz.SevenZArchiveEntry;
-import org.apache.commons.compress.archivers.sevenz.SevenZFile;
 
 import javax.swing.*;
 import javax.swing.text.*;
@@ -17,17 +14,12 @@ import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.file.Files;
-import java.nio.file.StandardCopyOption;
 import java.util.*;
 import java.util.List;
+import java.util.concurrent.*;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
-/**
- * LauncherUI с пустым classpath для запуска игры.
- * Если при нажатии "Установить игру" скачивается только один файл (например, native.7z.001),
- * проверьте логику grouping, наличие остальных .7z.00X файлов и вывод в консоль.
- */
 public class LauncherUI extends JFrame {
 
     private static final String SETTINGS_FILE = "settings.txt";
@@ -44,7 +36,6 @@ public class LauncherUI extends JFrame {
     private JCheckBox hideLauncherCheckBox;
     private JPanel modPanel;
 
-    // Здесь будут храниться конфигурации серверов, загруженные из servers.json
     protected List<ServerConfig> serverConfigs;
 
     public LauncherUI() {
@@ -53,16 +44,11 @@ public class LauncherUI extends JFrame {
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
 
-        // Загружаем настройки
         loadSettings();
-        // Инициализируем поля
         loadNickname();
         loadRam();
-        // Строим интерфейс
         initUI();
-        // Настраиваем кнопку "Установить/Запустить"
         updateLaunchButton();
-        // В фоновом потоке загружаем конфигурации серверов
         loadServerConfigsInBackground();
     }
 
@@ -97,7 +83,7 @@ public class LauncherUI extends JFrame {
         }
     }
 
-    // Загрузка serverConfigs в фоновом потоке
+    // Загрузка конфигурации серверов из servers.json
     private void loadServerConfigsInBackground() {
         new SwingWorker<ServerList, Void>() {
             @Override
@@ -142,7 +128,7 @@ public class LauncherUI extends JFrame {
         ((AbstractDocument) ramField.getDocument()).setDocumentFilter(new DigitFilter());
     }
 
-    // Папка для client.jar: version/[serverName]
+    // Папка установки для client.jar (скачивается в папку version/[server])
     private File getInstallDirForServer(String serverName) {
         File dir = new File("version", serverName);
         if (!dir.exists()) {
@@ -162,7 +148,7 @@ public class LauncherUI extends JFrame {
 
         JPanel panel = new JPanel(new BorderLayout(10, 10));
 
-        // Верхняя панель: ник, версия, озу, чекбокс
+        // Верхняя панель
         JPanel topPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 10));
         topPanel.add(new JLabel("Ник:"));
         topPanel.add(nicknameField);
@@ -175,41 +161,38 @@ public class LauncherUI extends JFrame {
         topPanel.add(hideLauncherCheckBox);
         panel.add(topPanel, BorderLayout.NORTH);
 
-        // Панель модов (если нужно)
+        // Панель модов (если требуется)
         modPanel = new JPanel();
         modPanel.setBorder(BorderFactory.createTitledBorder("Моды"));
         modPanel.setLayout(new BoxLayout(modPanel, BoxLayout.Y_AXIS));
         JPanel modsContainer = new JPanel(new BorderLayout());
         modsContainer.add(new JScrollPane(modPanel), BorderLayout.CENTER);
-
         toggleModsButton = new JButton("Включить все моды");
-        // Логика переключения — на ваше усмотрение
         modsContainer.add(toggleModsButton, BorderLayout.SOUTH);
         panel.add(modsContainer, BorderLayout.CENTER);
 
         // Нижняя панель кнопок
         JPanel buttonsPanel = new JPanel(new GridLayout(2, 2, 5, 5));
-
-        // 1) Кнопка Установить/Запустить
         launchButton = new JButton("Установить/Запустить");
         launchButton.addActionListener(e -> {
             String serverName = (String) serverComboBox.getSelectedItem();
-            if (serverName == null) return;
+            if (serverName == null)
+                return;
             File installDir = getInstallDirForServer(serverName);
-            // Если client.jar уже есть, запускаем; иначе — устанавливаем
             if (new File(installDir, "client.jar").exists()) {
                 runGame(installDir, getServerConfigByName(serverName), nicknameField.getText().trim());
             } else {
+                launchButton.setEnabled(false);
                 installGameWithProgress();
             }
         });
         buttonsPanel.add(launchButton);
 
-        // 2) Кнопка "Открыть папку"
         openFolderButton = new JButton("Открыть папку");
         openFolderButton.addActionListener(e -> {
             String serverName = (String) serverComboBox.getSelectedItem();
-            if (serverName == null) return;
+            if (serverName == null)
+                return;
             File installDir = getInstallDirForServer(serverName);
             if (installDir.exists()) {
                 try {
@@ -227,12 +210,13 @@ public class LauncherUI extends JFrame {
         });
         buttonsPanel.add(openFolderButton);
 
-        // 3) Кнопка "Переустановить"
         reinstallGameButton = new JButton("Переустановить");
-        reinstallGameButton.addActionListener(e -> installGameWithProgress());
+        reinstallGameButton.addActionListener(e -> {
+            launchButton.setEnabled(false);
+            installGameWithProgress();
+        });
         buttonsPanel.add(reinstallGameButton);
 
-        // 4) Кнопка "Сменить тему"
         toggleThemeButton = new JButton("Сменить тему");
         toggleThemeButton.addActionListener(e -> {
             String cur = settings.getProperty("theme");
@@ -260,7 +244,6 @@ public class LauncherUI extends JFrame {
         }
     }
 
-    // Обновляем текст кнопки Launch (Установить/Запустить)
     private void updateLaunchButton() {
         String serverName = (String) serverComboBox.getSelectedItem();
         if (serverName == null) {
@@ -275,7 +258,6 @@ public class LauncherUI extends JFrame {
         }
     }
 
-    // Ищем конфигурацию сервера по имени
     private ServerConfig getServerConfigByName(String name) {
         if (serverConfigs != null) {
             for (ServerConfig sc : serverConfigs) {
@@ -288,153 +270,153 @@ public class LauncherUI extends JFrame {
     }
 
     /*
-     * При нажатии на "Установить игру" запускаем задачу DownloadAllArchivesTask,
-     * которая скачивает client.jar (если нужно) и архивы (если assets/lib/native не существуют).
+     * При нажатии на "Установить игру" запускаются две параллельные задачи:
+     * 1. Скачивание client.jar (если ссылка заканчивается на ".jar") в папку
+     * version/[сервер].
+     * 2. Если в рабочей директории (папка лаунчера) отсутствуют каталоги assets,
+     * lib или native,
+     * автоматически загружаются архивы из GitHub, объединяются и извлекаются в
+     * подпапки с именами групп (например, "assets", "lib", "native").
      */
     private void installGameWithProgress() {
-        // Можно отключить кнопку, чтобы не жать повторно
-        // launchButton.setEnabled(false);
-        new DownloadAllArchivesTask().execute();
+        // Создаем диалог с индикатором загрузки
+        JDialog progressDialog = new JDialog(this, "Установка...", true);
+        JProgressBar progressBar = new JProgressBar();
+        progressBar.setIndeterminate(true);
+        progressDialog.add(progressBar);
+        progressDialog.setSize(300, 100);
+        progressDialog.setLocationRelativeTo(this);
+
+        new DownloadAllArchivesTask() {
+            @Override
+            protected void done() {
+                progressDialog.dispose();
+                launchButton.setEnabled(true);
+                System.out.println("DownloadAllArchivesTask завершена.");
+            }
+        }.execute();
+        progressDialog.setVisible(true);
     }
 
-    // Задача, которая автоматически скачивает все архивные части (.7z.00X или .zip.00X)
+    // Задача для загрузки архивов в формате ZIP: получает список файлов из GitHub,
+    // группирует их по префиксу и обрабатывает каждую группу параллельно
     private class DownloadAllArchivesTask extends SwingWorker<Void, Integer> {
-
         @Override
         protected Void doInBackground() throws Exception {
-            // 1) Проверяем, есть ли assets, lib, native
-            boolean assetsExist = new File("assets").exists();
-            boolean libExist = new File("lib").exists();
-            boolean nativeExist = new File("native").exists();
-
-            // 2) Если уже есть — пропускаем скачивание архивов
-            if (assetsExist && libExist && nativeExist) {
-                System.out.println("assets, lib, native уже существуют — пропускаем.");
-            } else {
-                // Скачиваем и извлекаем
-                fetchAndExtractAllArchives();
+            // Если каталоги assets, lib и native уже существуют, пропускаем загрузку
+            // архивов
+            if (new File("assets").exists() && new File("lib").exists() && new File("native").exists()) {
+                System.out.println("assets, lib, native уже существуют — скачивание архивов пропущено.");
+                return null;
             }
-
-            // 3) Параллельно можем скачивать client.jar (если нужно)
-            // Для упрощения примера — смотрим, выбран ли сервер, есть ли ссылка
-            String serverName = (String) serverComboBox.getSelectedItem();
-            if (serverName != null) {
-                ServerConfig sc = getServerConfigByName(serverName);
-                if (sc != null && sc.download_link.toLowerCase().endsWith(".jar")) {
-                    File installDir = getInstallDirForServer(serverName);
-                    if (!installDir.exists()) installDir.mkdirs();
-                    File clientTarget = new File(installDir, "client.jar");
-                    if (!clientTarget.exists()) {
-                        System.out.println("Скачиваем client.jar для сервера: " + sc.name);
-                        // Запускаем прямое скачивание в текущем потоке (или отдельном SwingWorker, как вам удобнее)
-                        downloadFile(sc.download_link, clientTarget);
-                    } else {
-                        System.out.println("client.jar уже существует для сервера: " + sc.name);
-                    }
-                }
-            }
-
-            return null;
-        }
-
-        @Override
-        protected void done() {
-            // Здесь можно вернуть кнопку в активное состояние
-            // launchButton.setEnabled(true);
-            // Или обновить UI
-            System.out.println("DownloadAllArchivesTask завершена.");
-        }
-
-        // Скачиваем список файлов из GitHub API, группируем, объединяем, распаковываем
-        private void fetchAndExtractAllArchives() throws IOException {
-            // Запрашиваем список файлов в data
             String apiUrl = "https://api.github.com/repos/qpov/QmLauncher/contents/data?ref=refs/heads/main";
             List<GHFileInfo> files = fetchGitHubFiles(apiUrl);
             System.out.println("Найдено файлов в data: " + files.size());
-
-            // Группируем по префиксу (пример: "assets.7z", "lib.7z", "native.7z", "assets.zip", ...)
+            if (files.isEmpty()) {
+                System.out.println("Файлы в папке data не найдены.");
+                return null;
+            }
+            // Вывод всех имен файлов для отладки
+            for (GHFileInfo fi : files) {
+                System.out.println("Файл: " + fi.name);
+            }
+            // Группируем файлы по префиксу – учитываем только файлы в формате ZIP
             Map<String, List<GHFileInfo>> groups = new HashMap<>();
             for (GHFileInfo fi : files) {
                 String lower = fi.name.toLowerCase();
-                // Ищем .7z. или .zip.
-                if (!lower.contains(".7z.") && !lower.contains(".zip.")) {
+                if (!lower.contains(".zip."))
                     continue;
-                }
-                // Находим позицию последней точки (пример: "native.7z.001")
                 int lastDot = fi.name.lastIndexOf('.');
-                if (lastDot < 0) continue;
-                // Префикс = "native.7z" (без ".001")
+                if (lastDot < 0)
+                    continue;
                 String prefix = fi.name.substring(0, lastDot);
-                // Если prefix уже заканчивается на ".7z" — убираем, чтобы не было двойного .7z.7z
-                if (prefix.endsWith(".7z")) {
-                    prefix = prefix.substring(0, prefix.length() - 3); // убираем ".7z"
-                } else if (prefix.endsWith(".zip")) {
-                    prefix = prefix.substring(0, prefix.length() - 4); // убираем ".zip"
+                if (prefix.endsWith(".zip")) {
+                    prefix = prefix.substring(0, prefix.length() - 4);
                 }
-                // Группируем
                 groups.computeIfAbsent(prefix, k -> new ArrayList<>()).add(fi);
             }
             System.out.println("Найдено групп архивов: " + groups.size());
-
-            // Обрабатываем каждую группу
-            for (Map.Entry<String, List<GHFileInfo>> entry : groups.entrySet()) {
-                String prefix = entry.getKey(); // например, "native"
-                List<GHFileInfo> groupFiles = entry.getValue();
-                // Сортируем, чтобы .001 шла раньше .002
-                groupFiles.sort(Comparator.comparing(fi -> fi.name));
-                System.out.println("Группа: " + prefix + ", файлов: " + groupFiles.size());
-
-                File combined = combineParts(prefix, groupFiles);
-                System.out.println("Объединённый архив: " + combined.getAbsolutePath());
-                extractArchive(combined, new File(".")); // извлекаем в папку лаунчера
-                combined.delete();
+            for (String key : groups.keySet()) {
+                System.out.println("Группа: " + key + ", файлов: " + groups.get(key).size());
             }
+            // Обрабатываем каждую группу параллельно
+            ExecutorService groupExecutor = Executors.newFixedThreadPool(groups.size());
+            List<Future<?>> groupFutures = new ArrayList<>();
+            for (Map.Entry<String, List<GHFileInfo>> entry : groups.entrySet()) {
+                groupFutures.add(groupExecutor.submit(() -> {
+                    String prefix = entry.getKey();
+                    List<GHFileInfo> groupFiles = entry.getValue();
+                    groupFiles.sort(Comparator.comparing(fi -> fi.name));
+                    System.out.println("Обрабатывается группа: " + prefix + ", файлов: " + groupFiles.size());
+                    try {
+                        File combined = combineParts(prefix, groupFiles);
+                        System.out.println("Объединённый архив: " + combined.getAbsolutePath());
+                        // Извлекаем архив в подпапку с именем группы
+                        File destDir = new File(System.getProperty("user.dir"), prefix);
+                        extractArchive(combined, destDir);
+                        combined.delete();
+                    } catch (Exception ex) {
+                        System.out.println("Ошибка при обработке группы " + prefix + ": " + ex.getMessage());
+                        ex.printStackTrace();
+                    }
+                }));
+            }
+            groupExecutor.shutdown();
+            for (Future<?> f : groupFutures) {
+                f.get();
+            }
+            return null;
         }
 
         private List<GHFileInfo> fetchGitHubFiles(String apiUrl) throws IOException {
             List<GHFileInfo> result = new ArrayList<>();
             URL url = new URL(apiUrl);
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-            conn.setConnectTimeout(5000);
-            conn.setReadTimeout(5000);
-            int code = conn.getResponseCode();
-            if (code == 200) {
+            conn.setConnectTimeout(15000);
+            conn.setReadTimeout(15000);
+            if (conn.getResponseCode() == 200) {
                 try (InputStream in = conn.getInputStream();
-                     InputStreamReader isr = new InputStreamReader(in)) {
+                        InputStreamReader isr = new InputStreamReader(in)) {
                     JsonArray arr = new Gson().fromJson(isr, JsonArray.class);
                     for (int i = 0; i < arr.size(); i++) {
                         JsonObject obj = arr.get(i).getAsJsonObject();
-                        if (!"file".equals(obj.get("type").getAsString())) continue;
+                        if (!"file".equals(obj.get("type").getAsString()))
+                            continue;
                         String name = obj.get("name").getAsString();
                         String downloadUrl = obj.get("download_url").getAsString();
                         result.add(new GHFileInfo(name, downloadUrl));
                     }
                 }
             } else {
-                System.out.println("GitHub API вернул код: " + code);
+                System.out.println("GitHub API вернул код: " + conn.getResponseCode());
             }
             return result;
         }
 
-        // Объединяем части (например, "native" + ".7z") => "native.7z"
-        private File combineParts(String prefix, List<GHFileInfo> parts) throws IOException {
-            // Проверяем, есть ли .zip. в имени, если да – это zip, иначе считаем .7z
-            boolean isZip = false;
-            for (GHFileInfo fi : parts) {
-                if (fi.name.toLowerCase().contains(".zip.")) {
-                    isZip = true;
-                    break;
-                }
-            }
-            String ext = isZip ? ".zip" : ".7z";
+        // Параллельное скачивание всех частей группы
+        private File combineParts(String prefix, List<GHFileInfo> parts)
+                throws IOException, InterruptedException, ExecutionException {
+            // Для ZIP всегда ext = ".zip"
+            String ext = ".zip";
             File combinedFile = new File(prefix + ext);
-            if (combinedFile.exists()) combinedFile.delete();
+            if (combinedFile.exists())
+                combinedFile.delete();
 
-            try (FileOutputStream fos = new FileOutputStream(combinedFile)) {
-                for (GHFileInfo fi : parts) {
-                    System.out.println("Скачиваем часть: " + fi.name);
+            ExecutorService executor = Executors.newFixedThreadPool(parts.size());
+            List<Future<File>> futures = new ArrayList<>();
+            for (GHFileInfo fi : parts) {
+                Future<File> future = executor.submit(() -> {
                     File tempPart = File.createTempFile("archpart", ".part");
+                    System.out.println("Скачивание части: " + fi.name);
                     downloadFile(fi.downloadUrl, tempPart);
+                    return tempPart;
+                });
+                futures.add(future);
+            }
+            executor.shutdown();
+            try (FileOutputStream fos = new FileOutputStream(combinedFile)) {
+                for (Future<File> future : futures) {
+                    File tempPart = future.get();
                     try (FileInputStream fis = new FileInputStream(tempPart)) {
                         byte[] buf = new byte[4096];
                         int read;
@@ -451,7 +433,7 @@ public class LauncherUI extends JFrame {
         private void downloadFile(String url, File outFile) throws IOException {
             System.out.println("downloadFile => " + url + " -> " + outFile.getName());
             try (InputStream in = new URL(url).openStream();
-                 FileOutputStream fos = new FileOutputStream(outFile)) {
+                    FileOutputStream fos = new FileOutputStream(outFile)) {
                 byte[] buf = new byte[4096];
                 int read;
                 while ((read = in.read(buf)) != -1) {
@@ -460,24 +442,22 @@ public class LauncherUI extends JFrame {
             }
         }
 
-        // Определяем, какой тип архива => unzip или extract7z
         private void extractArchive(File archive, File destDir) throws IOException {
             String name = archive.getName().toLowerCase();
             if (name.endsWith(".zip")) {
                 unzip(archive, destDir);
-            } else if (name.endsWith(".7z")) {
-                extract7z(archive, destDir);
             } else {
                 System.out.println("Неизвестный формат архива: " + archive.getName());
             }
         }
     }
 
-    // Распаковка zip
+    // Распаковка zip-архива
     private void unzip(File zipFile, File destDir) throws IOException {
-        System.out.println("unzip => " + zipFile.getName());
+        System.out.println("unzip => " + zipFile.getName() + " в папку " + destDir.getAbsolutePath());
         byte[] buffer = new byte[4096];
-        if (!destDir.exists()) destDir.mkdirs();
+        if (!destDir.exists())
+            destDir.mkdirs();
         try (ZipInputStream zis = new ZipInputStream(new FileInputStream(zipFile))) {
             ZipEntry entry;
             while ((entry = zis.getNextEntry()) != null) {
@@ -498,31 +478,7 @@ public class LauncherUI extends JFrame {
         }
     }
 
-    // Распаковка 7z (Apache Commons Compress)
-    private void extract7z(File sevenZFile, File destDir) throws IOException {
-        System.out.println("extract7z => " + sevenZFile.getName());
-        if (!destDir.exists()) destDir.mkdirs();
-        try (SevenZFile sevenZ = new SevenZFile(sevenZFile)) {
-            SevenZArchiveEntry entry;
-            byte[] content = new byte[8192];
-            while ((entry = sevenZ.getNextEntry()) != null) {
-                File outFile = new File(destDir, entry.getName());
-                if (entry.isDirectory()) {
-                    outFile.mkdirs();
-                    continue;
-                }
-                outFile.getParentFile().mkdirs();
-                try (FileOutputStream out = new FileOutputStream(outFile)) {
-                    int bytesRead;
-                    while ((bytesRead = sevenZ.read(content)) > 0) {
-                        out.write(content, 0, bytesRead);
-                    }
-                }
-            }
-        }
-    }
-
-    // Защита от Zip Slip
+    // Защита от Zip Slip для zip-архивов
     private File newFile(File destinationDir, String entryName) throws IOException {
         File destFile = new File(destinationDir, entryName);
         String destDirPath = destinationDir.getCanonicalPath();
@@ -533,20 +489,42 @@ public class LauncherUI extends JFrame {
         return destFile;
     }
 
-    // Запуск игры (пустой classpath)
+    // Класс для скачивания client.jar
+    private class DirectDownloadTask extends SwingWorker<Void, Integer> {
+        private String fileURL;
+        private File destinationFile;
+
+        public DirectDownloadTask(String fileURL, File destinationFile) {
+            this.fileURL = fileURL;
+            this.destinationFile = destinationFile;
+        }
+
+        @Override
+        protected Void doInBackground() throws Exception {
+            URL url = new URL(fileURL);
+            try (InputStream in = url.openStream();
+                    FileOutputStream out = new FileOutputStream(destinationFile)) {
+                byte[] buffer = new byte[4096];
+                int bytesRead;
+                while ((bytesRead = in.read(buffer)) != -1) {
+                    if (isCancelled())
+                        break;
+                    out.write(buffer, 0, bytesRead);
+                }
+            }
+            return null;
+        }
+    }
+
+    // Запуск игры с пустым baseClasspath (заполните библиотеки сами)
     private void runGame(File installDir, ServerConfig selectedServer, String nickname) {
         try {
             launchButton.setEnabled(false);
-
-            // Путь к client.jar
             String clientJarPath = new File(installDir, "client.jar").getAbsolutePath();
-            // Параметр памяти
             String maxRam = ramField.getText().trim();
             String xmxParam = "-Xmx" + maxRam + "G";
-
-            // Здесь пустой classpath – добавьте свои jar
-            String baseClasspath = clientJarPath
-            + ";lib/ll/night-config/toml/3.7.4/toml-3.7.4.jar"
+            // Пустой baseClasspath – заполните своими библиотеками
+            String baseClasspath = clientJarPath + ";lib/ll/night-config/toml/3.7.4/toml-3.7.4.jar"
                     + ";lib/com/fasterxml/jackson/core/jackson-annotations/2.13.4/jackson-annotations-2.13.4.jar"
                     + ";lib/com/fasterxml/jackson/core/jackson-core/2.13.4/jackson-core-2.13.4.jar"
                     + ";lib/com/fasterxml/jackson/core/jackson-databind/2.13.4.2/jackson-databind-2.13.4.2.jar"
@@ -694,7 +672,6 @@ public class LauncherUI extends JFrame {
                     + ";lib/org/slf4j/slf4j-api/2.0.16/slf4j-api-2.0.16.jar"
                     // + ";lib/org/spongepowered/mixin/0.8.7/mixin-0.8.7.jar"
                     + ";lib/v1/objects/a7e5a6024bfd3cd614625aa05629adf760020304/client.jar";
-
             String finalClasspath;
             String mainClass;
             if (selectedServer.fabric_version != null && !selectedServer.fabric_version.trim().isEmpty()) {
@@ -704,9 +681,8 @@ public class LauncherUI extends JFrame {
                 finalClasspath = baseClasspath;
                 mainClass = "net.minecraft.client.main.Main";
             } else {
-                throw new IllegalArgumentException("Не удалось определить тип загрузчика (Fabric/Forge).");
+                throw new IllegalArgumentException("Не удалось определить тип загрузчика для выбранного сервера.");
             }
-
             ProcessBuilder pb = new ProcessBuilder(
                     "java",
                     xmxParam,
@@ -721,15 +697,12 @@ public class LauncherUI extends JFrame {
                     "--gameDir", installDir.getAbsolutePath(),
                     "--assetsDir", new File("assets").getAbsolutePath(),
                     "--assetIndex", "19",
-                    "--username", nickname
-            );
+                    "--username", nickname);
             pb.directory(new File("."));
             pb.inheritIO();
             Process process = pb.start();
-
             JOptionPane.showMessageDialog(this,
                     "Игра запускается через " + (selectedServer.fabric_version != null ? "Fabric" : "Forge") + "...");
-
             if (Boolean.parseBoolean(settings.getProperty("hideLauncher"))) {
                 setVisible(false);
             }
@@ -756,13 +729,14 @@ public class LauncherUI extends JFrame {
     private static class GHFileInfo {
         String name;
         String downloadUrl;
+
         GHFileInfo(String name, String downloadUrl) {
             this.name = name;
             this.downloadUrl = downloadUrl;
         }
     }
 
-    // Фильтр, разрешающий ввод только цифр (для поля RAM)
+    // Фильтр для поля ввода RAM (только цифры)
     private class DigitFilter extends DocumentFilter {
         @Override
         public void insertString(FilterBypass fb, int offset, String string, AttributeSet attr)
@@ -771,6 +745,7 @@ public class LauncherUI extends JFrame {
                 super.insertString(fb, offset, string, attr);
             }
         }
+
         @Override
         public void replace(FilterBypass fb, int offset, int length, String text, AttributeSet attrs)
                 throws BadLocationException {
