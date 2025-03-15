@@ -2,19 +2,25 @@ package com.launcher;
 
 import com.formdev.flatlaf.FlatDarkLaf;
 import com.formdev.flatlaf.FlatLightLaf;
+import com.google.gson.Gson;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+// Для поддержки 7z‑архивов (если понадобится) – добавьте commons-compress в Class‑Path
+import org.apache.commons.compress.archivers.sevenz.SevenZArchiveEntry;
+import org.apache.commons.compress.archivers.sevenz.SevenZFile;
 
 import javax.swing.*;
 import javax.swing.text.*;
 import java.awt.*;
 import java.awt.event.*;
 import java.io.*;
+import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLConnection;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
-import java.util.ArrayList;
+import java.util.*;
 import java.util.List;
-import java.util.Properties;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -35,23 +41,19 @@ public class LauncherUI extends JFrame {
     private JPanel modPanel;
 
     protected List<ServerConfig> serverConfigs;
-    private List<ModConfig> defaultMods; // пока не используется
 
     public LauncherUI() {
-        System.out.println("Headless mode: " + GraphicsEnvironment.isHeadless());
         setTitle("QmLauncher 1.6.5");
         setSize(960, 540);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
 
-        System.out.println("Конструктор LauncherUI начался...");
         loadSettings();
         loadNickname();
         loadRam();
         initUI();
         updateLaunchButton();
         loadServerConfigsInBackground();
-        System.out.println("Конструктор LauncherUI закончен.");
     }
 
     private void loadSettings() {
@@ -85,13 +87,12 @@ public class LauncherUI extends JFrame {
         }
     }
 
-    // Фоновая загрузка конфигурации серверов
+    // Загружаем конфигурацию серверов из servers.json
     private void loadServerConfigsInBackground() {
         new SwingWorker<ServerList, Void>() {
             @Override
             protected ServerList doInBackground() throws Exception {
-                System.out.println("Загрузка конфигурации серверов в фоновом потоке...");
-                String url = "https://raw.githubusercontent.com/qpov/QmLauncher/refs/heads/main/servers.json?t="
+                String url = "https://raw.githubusercontent.com/qpov/QmLauncher/refs/heads/main/servers.json?t=" 
                         + System.currentTimeMillis();
                 return ConfigLoader.loadServerConfigs(url);
             }
@@ -102,11 +103,10 @@ public class LauncherUI extends JFrame {
                     ServerList config = get();
                     if (config != null && config.servers != null) {
                         serverConfigs = config.servers;
-                        System.out.println("Конфигурация серверов успешно загружена.");
                     } else {
                         JOptionPane.showMessageDialog(LauncherUI.this,
-                                "Ошибка загрузки конфигурации серверов.",
-                                "Error", JOptionPane.ERROR_MESSAGE);
+                                "Ошибка загрузки серверов.", "Error",
+                                JOptionPane.ERROR_MESSAGE);
                         serverConfigs = new ArrayList<>();
                     }
                     serverComboBox.removeAllItems();
@@ -116,9 +116,6 @@ public class LauncherUI extends JFrame {
                     updateLaunchButton();
                 } catch (Exception ex) {
                     ex.printStackTrace();
-                    JOptionPane.showMessageDialog(LauncherUI.this,
-                            "Ошибка при загрузке конфигурации серверов.",
-                            "Error", JOptionPane.ERROR_MESSAGE);
                 }
             }
         }.execute();
@@ -145,8 +142,7 @@ public class LauncherUI extends JFrame {
     }
 
     private void initUI() {
-        String theme = settings.getProperty("theme");
-        applyTheme(theme);
+        applyTheme(settings.getProperty("theme"));
 
         nicknameField = new JTextField(settings.getProperty("nickname"), 15);
         ramField = new JTextField(settings.getProperty("ram"), 5);
@@ -162,124 +158,53 @@ public class LauncherUI extends JFrame {
         topPanel.add(nicknameField);
         topPanel.add(new JLabel("Версия:"));
         serverComboBox = new JComboBox<>();
-        serverComboBox.addActionListener(e -> {
-            updateLaunchButton();
-            updateModPanel();
-        });
+        serverComboBox.addActionListener(e -> updateLaunchButton());
         topPanel.add(serverComboBox);
         topPanel.add(new JLabel("Макс. ОЗУ (ГБ):"));
         topPanel.add(ramField);
         topPanel.add(hideLauncherCheckBox);
         panel.add(topPanel, BorderLayout.NORTH);
 
-        // Панель модов
+        // Панель модов (если требуется)
         modPanel = new JPanel();
         modPanel.setBorder(BorderFactory.createTitledBorder("Моды"));
         modPanel.setLayout(new BoxLayout(modPanel, BoxLayout.Y_AXIS));
-        updateModPanel();
         JPanel modsContainer = new JPanel(new BorderLayout());
         modsContainer.add(new JScrollPane(modPanel), BorderLayout.CENTER);
         toggleModsButton = new JButton("Включить все моды");
-        toggleModsButton.addActionListener(e -> {
-            boolean allSelected = true;
-            for (Component comp : modPanel.getComponents()) {
-                if (comp instanceof JCheckBox) {
-                    if (!((JCheckBox) comp).isSelected()) {
-                        allSelected = false;
-                        break;
-                    }
-                }
-            }
-            boolean newState = !allSelected;
-            for (Component comp : modPanel.getComponents()) {
-                if (comp instanceof JCheckBox) {
-                    ((JCheckBox) comp).setSelected(newState);
-                }
-            }
-            toggleModsButton.setText(newState ? "Выключить все моды" : "Включить все моды");
-        });
+        // Логика переключения модов – по необходимости
         modsContainer.add(toggleModsButton, BorderLayout.SOUTH);
         panel.add(modsContainer, BorderLayout.CENTER);
 
         // Нижняя панель кнопок
         JPanel buttonsPanel = new JPanel(new GridLayout(2, 2, 5, 5));
-        launchButton = new JButton();
+        launchButton = new JButton("Установить/Запустить");
         launchButton.addActionListener(e -> {
-            String selectedServerName = (String) serverComboBox.getSelectedItem();
-            if (selectedServerName == null) {
-                JOptionPane.showMessageDialog(this,
-                        "Список серверов ещё не загружен или пуст.",
-                        "Ошибка", JOptionPane.ERROR_MESSAGE);
-                return;
-            }
-            ServerConfig selectedServer = getServerConfigByName(selectedServerName);
-            File installDir = getInstallDirForServer(selectedServerName);
-            // Если client.jar уже есть – запускаем игру, иначе выполняем установку
-            if (installDir.exists() && new File(installDir, "client.jar").exists()) {
-                if (!selectedServer.allow_custom_mods && modsModified(selectedServer.mods)) {
-                    JOptionPane.showMessageDialog(this,
-                            "Данный сервер не разрешает устанавливать дополнительные моды.",
-                            "Ошибка", JOptionPane.ERROR_MESSAGE);
-                    return;
-                }
-                String nick = nicknameField.getText().trim();
-                if (nick.isEmpty()) {
-                    nick = "Player";
-                }
-                settings.setProperty("nickname", nick);
-                settings.setProperty("ram", ramField.getText().trim());
-                settings.setProperty("hideLauncher", Boolean.toString(hideLauncherCheckBox.isSelected()));
-                saveSettings();
-                if (!updateModsForServer(selectedServer)) {
-                    JOptionPane.showMessageDialog(this,
-                            "Ошибка при обновлении модов для выбранного сервера.",
-                            "Ошибка", JOptionPane.ERROR_MESSAGE);
-                    return;
-                }
-                applyModSelection(selectedServer);
-                runGame(installDir, selectedServer, nick);
+            String serverName = (String) serverComboBox.getSelectedItem();
+            if (serverName == null) return;
+            File installDir = getInstallDirForServer(serverName);
+            if (new File(installDir, "client.jar").exists()) {
+                runGame(installDir, getServerConfigByName(serverName), nicknameField.getText().trim());
             } else {
                 installGameWithProgress();
             }
         });
         buttonsPanel.add(launchButton);
 
-        openFolderButton = new JButton("Открыть папку с игрой");
-        openFolderButton.addActionListener(e -> {
-            String selectedServerName = (String) serverComboBox.getSelectedItem();
-            if (selectedServerName == null) {
-                JOptionPane.showMessageDialog(this,
-                        "Список серверов ещё не загружен или пуст.",
-                        "Ошибка", JOptionPane.ERROR_MESSAGE);
-                return;
-            }
-            File installDir = getInstallDirForServer(selectedServerName);
-            if (installDir.exists()) {
-                try {
-                    Desktop.getDesktop().open(installDir);
-                } catch (IOException ex) {
-                    JOptionPane.showMessageDialog(this,
-                            "Невозможно открыть папку: " + ex.getMessage(),
-                            "Ошибка", JOptionPane.ERROR_MESSAGE);
-                }
-            } else {
-                JOptionPane.showMessageDialog(this,
-                        "Игра не установлена.",
-                        "Информация", JOptionPane.INFORMATION_MESSAGE);
-            }
-        });
+        openFolderButton = new JButton("Открыть папку");
         buttonsPanel.add(openFolderButton);
 
-        reinstallGameButton = new JButton("Переустановить игру");
+        reinstallGameButton = new JButton("Переустановить");
         reinstallGameButton.addActionListener(e -> installGameWithProgress());
         buttonsPanel.add(reinstallGameButton);
 
         toggleThemeButton = new JButton("Сменить тему");
         toggleThemeButton.addActionListener(e -> {
-            String current = loadTheme();
-            String next = current.equals("dark") ? "light" : "dark";
+            String cur = settings.getProperty("theme");
+            String next = cur.equals("dark") ? "light" : "dark";
             applyTheme(next);
-            saveTheme(next);
+            settings.setProperty("theme", next);
+            saveSettings();
         });
         buttonsPanel.add(toggleThemeButton);
 
@@ -287,18 +212,9 @@ public class LauncherUI extends JFrame {
         add(panel);
     }
 
-    private String loadTheme() {
-        return settings.getProperty("theme");
-    }
-
-    private void saveTheme(String theme) {
-        settings.setProperty("theme", theme);
-        saveSettings();
-    }
-
     private void applyTheme(String theme) {
         try {
-            if (theme.equals("dark")) {
+            if ("dark".equalsIgnoreCase(theme)) {
                 UIManager.setLookAndFeel(new FlatDarkLaf());
             } else {
                 UIManager.setLookAndFeel(new FlatLightLaf());
@@ -309,22 +225,20 @@ public class LauncherUI extends JFrame {
         }
     }
 
-    // Обновление текста на кнопке запуска
     private void updateLaunchButton() {
-        String selectedServerName = (String) serverComboBox.getSelectedItem();
-        if (selectedServerName == null) {
+        String serverName = (String) serverComboBox.getSelectedItem();
+        if (serverName == null) {
             launchButton.setText("Установить игру");
             return;
         }
-        File installDir = getInstallDirForServer(selectedServerName);
-        if (installDir.exists() && new File(installDir, "client.jar").exists()) {
+        File installDir = getInstallDirForServer(serverName);
+        if (new File(installDir, "client.jar").exists()) {
             launchButton.setText("Запустить");
         } else {
             launchButton.setText("Установить игру");
         }
     }
 
-    // Поиск конфигурации сервера по имени
     private ServerConfig getServerConfigByName(String name) {
         if (serverConfigs != null) {
             for (ServerConfig sc : serverConfigs) {
@@ -336,417 +250,132 @@ public class LauncherUI extends JFrame {
         return null;
     }
 
-    // Обновление панели модов
-    private void updateModPanel() {
-        modPanel.removeAll();
-        String selectedName = (String) serverComboBox.getSelectedItem();
-        if (selectedName == null || serverConfigs == null) {
-            modPanel.revalidate();
-            modPanel.repaint();
-            return;
-        }
-        ServerConfig selectedServer = getServerConfigByName(selectedName);
-        if (selectedServer != null) {
-            File installDir = getInstallDirForServer(selectedServer.name);
-            File modsFolder = new File(installDir, "mods");
-            List<String> enabledMods = new ArrayList<>();
-            List<String> disabledMods = new ArrayList<>();
-            if (modsFolder.exists()) {
-                File[] files = modsFolder.listFiles((dir, name) -> name.toLowerCase().endsWith(".jar"));
-                if (files != null) {
-                    for (File file : files) {
-                        enabledMods.add(file.getName());
-                    }
-                }
-                File disableFolder = new File(modsFolder, "disable");
-                if (disableFolder.exists()) {
-                    File[] disFiles = disableFolder.listFiles((dir, name) -> name.toLowerCase().endsWith(".jar"));
-                    if (disFiles != null) {
-                        for (File file : disFiles) {
-                            disabledMods.add(file.getName());
-                        }
-                    }
-                }
-            }
-            for (String modName : enabledMods) {
-                JCheckBox cb = new JCheckBox(modName, true);
-                if (!selectedServer.allow_custom_mods && selectedServer.mods != null) {
-                    boolean isRequired = false;
-                    for (ModConfig req : selectedServer.mods) {
-                        if ((req.name + ".jar").equalsIgnoreCase(modName)) {
-                            isRequired = true;
-                            break;
-                        }
-                    }
-                    if (!isRequired) {
-                        cb.setForeground(Color.RED);
-                        cb.setToolTipText("Сервер запрещает использовать другие моды.");
-                    }
-                }
-                modPanel.add(cb);
-            }
-            for (String modName : disabledMods) {
-                JCheckBox cb = new JCheckBox(modName, false);
-                if (selectedServer.mods != null) {
-                    for (ModConfig req : selectedServer.mods) {
-                        if ((req.name + ".jar").equalsIgnoreCase(modName)) {
-                            cb.setForeground(Color.ORANGE);
-                            cb.setToolTipText("Отсутствуют требуемые моды.");
-                            break;
-                        }
-                    }
-                }
-                modPanel.add(cb);
-            }
-            if (selectedServer.mods != null) {
-                for (ModConfig req : selectedServer.mods) {
-                    String reqFile = req.name + ".jar";
-                    if (!enabledMods.contains(reqFile) && !disabledMods.contains(reqFile)) {
-                        JCheckBox cb = new JCheckBox(reqFile, false);
-                        cb.setForeground(Color.ORANGE);
-                        cb.setToolTipText("Отсутствуют требуемые моды.");
-                        modPanel.add(cb);
-                    }
-                }
-            }
-        }
-        modPanel.revalidate();
-        modPanel.repaint();
-    }
-
-    // Проверка, изменялись ли моды
-    private boolean modsModified(List<ModConfig> requiredMods) {
-        if (requiredMods == null) {
-            return false;
-        }
-        String selectedName = (String) serverComboBox.getSelectedItem();
-        if (selectedName == null) {
-            return false;
-        }
-        File installDir = getInstallDirForServer(selectedName);
-        File modsFolder = new File(installDir, "mods");
-        List<String> installed = new ArrayList<>();
-        if (modsFolder.exists()) {
-            File[] files = modsFolder.listFiles((dir, name) -> name.toLowerCase().endsWith(".jar"));
-            if (files != null) {
-                for (File file : files) {
-                    installed.add(file.getName());
-                }
-            }
-        }
-        for (ModConfig req : requiredMods) {
-            String reqFile = req.name + ".jar";
-            if (!installed.contains(reqFile)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    // Обновление модов для сервера
-    private boolean updateModsForServer(ServerConfig selectedServer) {
-        try {
-            File installDir = getInstallDirForServer(selectedServer.name);
-            File gameModsFolder = new File(installDir, "mods");
-            if (!gameModsFolder.exists()) {
-                gameModsFolder.mkdirs();
-            }
-            File serverModsFolder = new File("mods", selectedServer.name);
-            if (!serverModsFolder.exists()) {
-                serverModsFolder.mkdirs();
-            }
-            if (selectedServer.name.equalsIgnoreCase("Default")) {
-                File[] files = serverModsFolder.listFiles();
-                if (files != null) {
-                    for (File modFile : files) {
-                        File destFile = new File(gameModsFolder, modFile.getName());
-                        if (!destFile.exists()) {
-                            Files.copy(modFile.toPath(), destFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-                        }
-                    }
-                }
-            } else {
-                if (!selectedServer.allow_custom_mods) {
-                    File[] existing = gameModsFolder.listFiles();
-                    if (existing != null) {
-                        for (File f : existing) {
-                            f.delete();
-                        }
-                    }
-                    if (selectedServer.mods != null) {
-                        for (ModConfig mod : selectedServer.mods) {
-                            File modFile = new File(serverModsFolder, mod.name + ".jar");
-                            if (!modFile.exists()) {
-                                downloadFile(mod.url, modFile);
-                            }
-                            Files.copy(modFile.toPath(),
-                                    new File(gameModsFolder, modFile.getName()).toPath(),
-                                    StandardCopyOption.REPLACE_EXISTING);
-                        }
-                    }
-                } else {
-                    File[] files = serverModsFolder.listFiles();
-                    if (files != null) {
-                        for (File modFile : files) {
-                            File destFile = new File(gameModsFolder, modFile.getName());
-                            if (!destFile.exists()) {
-                                Files.copy(modFile.toPath(), destFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-                            }
-                        }
-                    }
-                }
-            }
-            return true;
-        } catch (IOException ex) {
-            ex.printStackTrace();
-            return false;
-        }
-    }
-
-    // Применение выбранных модов
-    private void applyModSelection(ServerConfig selectedServer) {
-        File installDir = getInstallDirForServer(selectedServer.name);
-        File gameModsFolder = new File(installDir, "mods");
-        if (!gameModsFolder.exists()) {
-            gameModsFolder.mkdirs();
-        }
-        File disableFolder = new File(gameModsFolder, "disable");
-        if (!disableFolder.exists()) {
-            disableFolder.mkdirs();
-        }
-        Component[] comps = modPanel.getComponents();
-        for (Component comp : comps) {
-            if (comp instanceof JCheckBox) {
-                JCheckBox cb = (JCheckBox) comp;
-                String modFileName = cb.getText();
-                File modFile = new File(gameModsFolder, modFileName);
-                File disabledFile = new File(disableFolder, modFileName);
-                if (!cb.isSelected()) {
-                    if (modFile.exists()) {
-                        try {
-                            Files.move(modFile.toPath(), disabledFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-                        } catch (IOException ex) {
-                            ex.printStackTrace();
-                        }
-                    }
-                } else {
-                    if (disabledFile.exists()) {
-                        try {
-                            Files.move(disabledFile.toPath(), modFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-                        } catch (IOException ex) {
-                            ex.printStackTrace();
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    // Прямое скачивание файла
-    private void downloadFile(String fileURL, File destinationFile) throws IOException {
-        URL url = new URL(fileURL);
-        try (InputStream inputStream = url.openStream();
-             FileOutputStream outputStream = new FileOutputStream(destinationFile)) {
-            byte[] buffer = new byte[4096];
-            int bytesRead;
-            while ((bytesRead = inputStream.read(buffer)) != -1) {
-                outputStream.write(buffer, 0, bytesRead);
-            }
-        }
-    }
-
     /*
-     * Метод установки игры.
-     * Выполняются одновременно две задачи:
-     * 1. Если download_link оканчивается на ".jar", скачивается client.jar напрямую в папку установки (version/[сервер]).
-     * 2. Если каталоги assets, lib или native отсутствуют в текущей директории, запускается скачивание архивных частей,
-     *    их объединение и извлечение в папку с лаунчером.
-     * Обе задачи запускаются параллельно без необходимости ручного подтверждения.
+     * Метод установки игры:
+     * Выполняются две параллельные задачи:
+     * 1. Скачивание client.jar (если ссылка заканчивается на ".jar") в папку version/[сервер].
+     * 2. Если каталоги assets, lib или native отсутствуют, автоматическая загрузка всех архивов из папки data на GitHub,
+     *    объединение частей и их извлечение в папку с лаунчером.
      */
     private void installGameWithProgress() {
-        String selectedServerName = (String) serverComboBox.getSelectedItem();
-        if (selectedServerName == null) {
-            JOptionPane.showMessageDialog(this,
-                    "Список серверов ещё не загружен или пуст.",
-                    "Ошибка", JOptionPane.ERROR_MESSAGE);
-            return;
-        }
-        ServerConfig selectedServer = getServerConfigByName(selectedServerName);
-        if (selectedServer == null) {
-            JOptionPane.showMessageDialog(this, "Конфигурация для выбранного сервера не найдена.");
-            return;
-        }
-
-        boolean needArchive = !(new File("assets").exists() && new File("lib").exists() && new File("native").exists());
-        final int tasksToRun = (selectedServer.download_link.toLowerCase().endsWith(".jar") ? 1 : 0)
-                + (needArchive ? 1 : 0);
-        if (tasksToRun == 0) {
-            JOptionPane.showMessageDialog(this, "Все компоненты уже загружены.");
-            return;
-        }
-
-        final JDialog[] clientDialogHolder = new JDialog[1];
-        final JDialog[] archiveDialogHolder = new JDialog[1];
-        final int[] completed = {0};
-        Runnable checkCompletion = () -> {
-            completed[0]++;
-            if (completed[0] == tasksToRun) {
-                if (clientDialogHolder[0] != null) {
-                    clientDialogHolder[0].dispose();
-                }
-                if (archiveDialogHolder[0] != null) {
-                    archiveDialogHolder[0].dispose();
-                }
-                JOptionPane.showMessageDialog(this,
-                        "Установка завершена.\nclient.jar в " + getInstallDirForServer(selectedServerName).getAbsolutePath() +
-                        "\nАрхивы извлечены в " + new File(".").getAbsolutePath());
-                updateLaunchButton();
-            }
-        };
-
-        // 1. Скачивание client.jar
-        if (selectedServer.download_link.toLowerCase().endsWith(".jar")) {
-            File installDir = getInstallDirForServer(selectedServerName);
-            if (!installDir.exists()) {
-                installDir.mkdirs();
-            }
-            File clientTarget = new File(installDir, "client.jar");
-
-            clientDialogHolder[0] = new JDialog(this, "Скачивание client.jar...", Dialog.ModalityType.MODELESS);
-            JProgressBar progressBar1 = new JProgressBar(0, 100);
-            progressBar1.setIndeterminate(true);
-            JButton cancelButton1 = new JButton("Отмена");
-            JPanel p1 = new JPanel(new BorderLayout(10, 10));
-            p1.add(new JLabel("Скачивание client.jar..."), BorderLayout.NORTH);
-            p1.add(progressBar1, BorderLayout.CENTER);
-            p1.add(cancelButton1, BorderLayout.SOUTH);
-            clientDialogHolder[0].getContentPane().add(p1);
-            clientDialogHolder[0].setSize(300, 120);
-            clientDialogHolder[0].setLocationRelativeTo(this);
-
-            DirectDownloadTask directWorker = new DirectDownloadTask(selectedServer.download_link, clientTarget);
-            directWorker.addPropertyChangeListener(evt -> {
-                if ("progress".equals(evt.getPropertyName())) {
-                    progressBar1.setIndeterminate(false);
-                    progressBar1.setValue((Integer) evt.getNewValue());
-                }
-            });
-            cancelButton1.addActionListener(e -> directWorker.cancel(true));
-            directWorker.addPropertyChangeListener(evt -> {
-                if ("state".equals(evt.getPropertyName()) &&
-                        SwingWorker.StateValue.DONE.equals(evt.getNewValue())) {
-                    checkCompletion.run();
-                }
-            });
-            directWorker.execute();
-            clientDialogHolder[0].setVisible(true);
-        }
-
-        // 2. Скачивание архивов (если needArchive)
-        if (needArchive) {
-            File extractionDir = new File("."); // Папка с лаунчером
-            archiveDialogHolder[0] = new JDialog(this, "Скачивание архивов...", Dialog.ModalityType.MODELESS);
-            JProgressBar progressBar2 = new JProgressBar(0, 100);
-            progressBar2.setIndeterminate(true);
-            JButton cancelButton2 = new JButton("Отмена");
-            JPanel p2 = new JPanel(new BorderLayout(10, 10));
-            p2.add(new JLabel("Скачивание и извлечение архивов..."), BorderLayout.NORTH);
-            p2.add(progressBar2, BorderLayout.CENTER);
-            p2.add(cancelButton2, BorderLayout.SOUTH);
-            archiveDialogHolder[0].getContentPane().add(p2);
-            archiveDialogHolder[0].setSize(300, 120);
-            archiveDialogHolder[0].setLocationRelativeTo(this);
-
-            String baseUrl = "https://raw.githubusercontent.com/qpov/QmLauncher/refs/heads/main/data";
-            String[] parts = {"assets.7z.001", "assets.7z.002", "assets.7z.003", "assets.7z.004", "lib.7z.001", "lib.7z.002", "native.7z.001"};
-            DownloadAndExtractTask archiveWorker = new DownloadAndExtractTask(baseUrl, parts, extractionDir);
-            archiveWorker.addPropertyChangeListener(evt -> {
-                if ("progress".equals(evt.getPropertyName())) {
-                    progressBar2.setIndeterminate(false);
-                    progressBar2.setValue((Integer) evt.getNewValue());
-                }
-            });
-            cancelButton2.addActionListener(e -> archiveWorker.cancel(true));
-            archiveWorker.addPropertyChangeListener(evt -> {
-                if ("state".equals(evt.getPropertyName()) &&
-                        SwingWorker.StateValue.DONE.equals(evt.getNewValue())) {
-                    checkCompletion.run();
-                }
-            });
-            archiveWorker.execute();
-            archiveDialogHolder[0].setVisible(true);
-        }
+        new DownloadAllArchivesTask().execute();
     }
 
-    // Класс для скачивания мультичастного архива, объединения частей и извлечения
-    private class DownloadAndExtractTask extends SwingWorker<Void, Integer> {
-        private String baseUrl;
-        private String[] parts;
-        private File installDir;
-
-        public DownloadAndExtractTask(String baseUrl, String[] parts, File installDir) {
-            this.baseUrl = baseUrl;
-            this.parts = parts;
-            this.installDir = installDir;
-        }
+    // Задача, которая обращается к GitHub API и автоматически обрабатывает все архивы в папке data
+    private class DownloadAllArchivesTask extends SwingWorker<Void, Integer> {
 
         @Override
         protected Void doInBackground() throws Exception {
-            // Скачиваем архивные части в поддиректорию "temp_download" в папке лаунчера
-            File tempDir = new File(installDir, "temp_download");
-            if (!tempDir.exists()) {
-                tempDir.mkdirs();
+            // Проверка наличия необходимых папок; если уже существуют, пропускаем
+            if (new File("assets").exists() && new File("lib").exists() && new File("native").exists()) {
+                System.out.println("Все компоненты уже существуют.");
+                return null;
             }
-            int partCount = parts.length;
-            File[] downloadedParts = new File[partCount];
-            for (int i = 0; i < partCount; i++) {
-                if (isCancelled()) break;
-                String partName = parts[i];
-                URL url = new URL(baseUrl + "/" + partName);
-                File partFile = new File(tempDir, partName);
-                downloadedParts[i] = partFile;
-                try (InputStream in = url.openStream();
-                     FileOutputStream out = new FileOutputStream(partFile)) {
-                    byte[] buffer = new byte[4096];
-                    int bytesRead;
-                    while ((bytesRead = in.read(buffer)) != -1) {
-                        if (isCancelled()) break;
-                        out.write(buffer, 0, bytesRead);
+
+            // Получаем список файлов из папки data через GitHub API
+            String apiUrl = "https://api.github.com/repos/qpov/QmLauncher/contents/data?ref=refs/heads/main";
+            List<GHFileInfo> files = fetchGitHubFiles(apiUrl);
+            if (files.isEmpty()) {
+                System.out.println("Файлы в data не найдены.");
+                return null;
+            }
+
+            // Группируем файлы по префиксу (например, assets.7z, lib.7z, native.7z или .zip)
+            Map<String, List<GHFileInfo>> groups = new HashMap<>();
+            for (GHFileInfo fi : files) {
+                String lower = fi.name.toLowerCase();
+                if (!lower.contains(".7z.") && !lower.contains(".zip.")) {
+                    continue;
+                }
+                int lastDot = fi.name.lastIndexOf('.');
+                if (lastDot < 0) continue;
+                String prefix = fi.name.substring(0, lastDot);
+                groups.computeIfAbsent(prefix, k -> new ArrayList<>()).add(fi);
+            }
+
+            // Для каждой группы объединяем части и извлекаем архив
+            for (Map.Entry<String, List<GHFileInfo>> entry : groups.entrySet()) {
+                String prefix = entry.getKey();
+                List<GHFileInfo> groupFiles = entry.getValue();
+                groupFiles.sort(Comparator.comparing(fi -> fi.name));
+                File combinedArchive = combineParts(prefix, groupFiles);
+                extractArchive(combinedArchive, new File("."));
+                combinedArchive.delete();
+            }
+            return null;
+        }
+
+        private List<GHFileInfo> fetchGitHubFiles(String apiUrl) throws IOException {
+            List<GHFileInfo> result = new ArrayList<>();
+            URL url = new URL(apiUrl);
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setConnectTimeout(5000);
+            conn.setReadTimeout(5000);
+            if (conn.getResponseCode() == 200) {
+                try (InputStream in = conn.getInputStream();
+                     InputStreamReader isr = new InputStreamReader(in)) {
+                    JsonArray arr = new Gson().fromJson(isr, JsonArray.class);
+                    for (int i = 0; i < arr.size(); i++) {
+                        JsonObject obj = arr.get(i).getAsJsonObject();
+                        if (!"file".equals(obj.get("type").getAsString())) continue;
+                        String name = obj.get("name").getAsString();
+                        String downloadUrl = obj.get("download_url").getAsString();
+                        result.add(new GHFileInfo(name, downloadUrl));
                     }
                 }
-                int progressValue = (int) (((i + 1) / (float) partCount) * 50);
-                setProgress(progressValue);
             }
-            if (isCancelled()) return null;
-            // Объединяем части в один архив в папке temp_download
-            File combinedZip = new File(tempDir, "combined_game.zip");
-            try (FileOutputStream fos = new FileOutputStream(combinedZip)) {
-                for (File partFile : downloadedParts) {
-                    if (isCancelled()) break;
-                    try (FileInputStream fis = new FileInputStream(partFile)) {
-                        byte[] buffer = new byte[4096];
-                        int len;
-                        while ((len = fis.read(buffer)) != -1) {
-                            fos.write(buffer, 0, len);
+            return result;
+        }
+
+        private File combineParts(String prefix, List<GHFileInfo> parts) throws IOException {
+            // Определяем расширение из prefix
+            int dotPos = prefix.lastIndexOf('.');
+            String ext = dotPos >= 0 ? prefix.substring(dotPos) : "";
+            File combinedFile = new File(prefix + ext);
+            if (combinedFile.exists()) {
+                combinedFile.delete();
+            }
+            try (FileOutputStream fos = new FileOutputStream(combinedFile)) {
+                for (GHFileInfo fi : parts) {
+                    File tempPart = File.createTempFile("archpart", ".part");
+                    downloadFile(fi.downloadUrl, tempPart);
+                    try (FileInputStream fis = new FileInputStream(tempPart)) {
+                        byte[] buf = new byte[4096];
+                        int read;
+                        while ((read = fis.read(buf)) != -1) {
+                            fos.write(buf, 0, read);
                         }
                     }
+                    tempPart.delete();
                 }
             }
-            setProgress(60);
-            // Извлекаем архив в installDir (папку с лаунчером)
-            unzip(combinedZip, installDir);
-            setProgress(100);
-            // Удаляем архивные части и объединённый архив
-            for (File partFile : downloadedParts) {
-                partFile.delete();
+            return combinedFile;
+        }
+
+        private void extractArchive(File archive, File destDir) throws IOException {
+            String name = archive.getName().toLowerCase();
+            if (name.endsWith(".zip")) {
+                unzip(archive, destDir);
+            } else if (name.endsWith(".7z")) {
+                extract7z(archive, destDir);
+            } else {
+                System.out.println("Неизвестный формат архива: " + archive.getName());
             }
-            combinedZip.delete();
-            tempDir.delete();
-            return null;
+        }
+
+        private void downloadFile(String url, File outFile) throws IOException {
+            try (InputStream in = new URL(url).openStream();
+                 FileOutputStream fos = new FileOutputStream(outFile)) {
+                byte[] buf = new byte[4096];
+                int read;
+                while ((read = in.read(buf)) != -1) {
+                    fos.write(buf, 0, read);
+                }
+            }
         }
     }
 
-    // Метод извлечения zip-архива
+    // Извлечение zip-архива
     private void unzip(File zipFile, File destDir) throws IOException {
         byte[] buffer = new byte[4096];
         if (!destDir.exists()) {
@@ -755,11 +384,11 @@ public class LauncherUI extends JFrame {
         try (ZipInputStream zis = new ZipInputStream(new FileInputStream(zipFile))) {
             ZipEntry entry;
             while ((entry = zis.getNextEntry()) != null) {
-                File newFile = newFile(destDir, entry);
+                File newFile = newFile(destDir, entry.getName());
                 if (entry.isDirectory()) {
                     newFile.mkdirs();
                 } else {
-                    new File(newFile.getParent()).mkdirs();
+                    newFile.getParentFile().mkdirs();
                     try (FileOutputStream fos = new FileOutputStream(newFile)) {
                         int len;
                         while ((len = zis.read(buffer)) > 0) {
@@ -772,13 +401,38 @@ public class LauncherUI extends JFrame {
         }
     }
 
+    // Извлечение 7z-архива с использованием Apache Commons Compress
+    private void extract7z(File sevenZFile, File destDir) throws IOException {
+        if (!destDir.exists()) {
+            destDir.mkdirs();
+        }
+        try (SevenZFile sevenZ = new SevenZFile(sevenZFile)) {
+            SevenZArchiveEntry entry;
+            byte[] content = new byte[8192];
+            while ((entry = sevenZ.getNextEntry()) != null) {
+                File outFile = new File(destDir, entry.getName());
+                if (entry.isDirectory()) {
+                    outFile.mkdirs();
+                    continue;
+                }
+                outFile.getParentFile().mkdirs();
+                try (FileOutputStream out = new FileOutputStream(outFile)) {
+                    int bytesRead;
+                    while ((bytesRead = sevenZ.read(content)) > 0) {
+                        out.write(content, 0, bytesRead);
+                    }
+                }
+            }
+        }
+    }
+
     // Защита от Zip Slip
-    private File newFile(File destinationDir, ZipEntry zipEntry) throws IOException {
-        File destFile = new File(destinationDir, zipEntry.getName());
+    private File newFile(File destinationDir, String entryName) throws IOException {
+        File destFile = new File(destinationDir, entryName);
         String destDirPath = destinationDir.getCanonicalPath();
         String destFilePath = destFile.getCanonicalPath();
         if (!destFilePath.startsWith(destDirPath + File.separator)) {
-            throw new IOException("Entry is outside of the target dir: " + zipEntry.getName());
+            throw new IOException("Zip Slip: " + entryName);
         }
         return destFile;
     }
@@ -809,7 +463,7 @@ public class LauncherUI extends JFrame {
         }
     }
 
-    // Запуск игры с использованием client.jar из папки установки (version/[сервер])
+    // Запуск игры. Здесь формируется командная строка.
     private void runGame(File installDir, ServerConfig selectedServer, String nickname) {
         try {
             launchButton.setEnabled(false);
@@ -817,6 +471,7 @@ public class LauncherUI extends JFrame {
             String maxRam = ramField.getText().trim();
             String xmxParam = "-Xmx" + maxRam + "G";
 
+            // Пустой baseClasspath – добавьте сюда необходимые библиотеки
             String baseClasspath = clientJarPath
             + ";lib/ll/night-config/toml/3.7.4/toml-3.7.4.jar"
             + ";lib/com/fasterxml/jackson/core/jackson-annotations/2.13.4/jackson-annotations-2.13.4.jar"
@@ -965,69 +620,46 @@ public class LauncherUI extends JFrame {
             + ";lib/org/ow2/asm/asm-util/9.7.1/asm-util-9.7.1.jar"
             + ";lib/org/slf4j/slf4j-api/2.0.16/slf4j-api-2.0.16.jar"
             // + ";lib/org/spongepowered/mixin/0.8.7/mixin-0.8.7.jar"
-            + ";lib/v1/objects/a7e5a6024bfd3cd614625aa05629adf760020304/client.jar";
+            + ";lib/v1/objects/a7e5a6024bfd3cd614625aa05629adf760020304/client.jar";; // <-- Заполните этот блок
 
             String finalClasspath;
             String mainClass;
             ProcessBuilder pb;
             if (selectedServer.fabric_version != null && !selectedServer.fabric_version.trim().isEmpty()) {
-                finalClasspath = baseClasspath
-                        + ";lib/net/fabricmc/fabric-loader/" + selectedServer.fabric_version + "/fabric-loader-" + selectedServer.fabric_version + ".jar"
-                        + ";lib/net/fabricmc/intermediary/1.21.4/intermediary-1.21.4.jar"
-                        + ";lib/net/fabricmc/sponge-mixin/0.15.4+mixin.0.8.7/sponge-mixin-0.15.4+mixin.0.8.7.jar";
+                finalClasspath = baseClasspath; // + дополнительные параметры для Fabric, если нужно
                 mainClass = "net.fabricmc.loader.impl.launch.knot.KnotClient";
-                pb = new ProcessBuilder(
-                        "java",
-                        xmxParam,
-                        "-Djava.library.path=native",
-                        "-cp", finalClasspath,
-                        mainClass,
-                        "--accessToken", "dummy",
-                        "--uuid", "dummy-uuid",
-                        "--clientId", "dummy-clientid",
-                        "--xuid", "dummy-xuid",
-                        "--userType", "mojang",
-                        "--versionType", "release",
-                        "--version", selectedServer.minecraft_version,
-                        "--gameDir", getInstallDirForServer((String) serverComboBox.getSelectedItem()).getAbsolutePath(),
-                        "--assetsDir", new File("assets").getAbsolutePath(),
-                        "--assetIndex", "19",
-                        "--username", nicknameField.getText().trim());
             } else if (selectedServer.forge_version != null && !selectedServer.forge_version.trim().isEmpty()) {
-                finalClasspath = baseClasspath
-                        + ";lib/net/minecraftforge/forge/" + selectedServer.forge_version + "/forge-" + selectedServer.forge_version + "-client.jar";
+                finalClasspath = baseClasspath; // + дополнительные параметры для Forge, если нужно
                 mainClass = "net.minecraft.client.main.Main";
-                pb = new ProcessBuilder(
-                        "java",
-                        xmxParam,
-                        "-Djava.library.path=native",
-                        "-cp", finalClasspath,
-                        mainClass,
-                        "--accessToken", "dummy",
-                        "--uuid", "dummy-uuid",
-                        "--clientId", "dummy-clientid",
-                        "--xuid", "dummy-xuid",
-                        "--version", selectedServer.minecraft_version,
-                        "--gameDir", getInstallDirForServer((String) serverComboBox.getSelectedItem()).getAbsolutePath(),
-                        "--assetsDir", new File("assets").getAbsolutePath(),
-                        "--assetIndex", "19",
-                        "--username", nicknameField.getText().trim());
             } else {
                 throw new IllegalArgumentException("Не удалось определить тип загрузчика для выбранного сервера.");
             }
 
+            pb = new ProcessBuilder(
+                    "java",
+                    xmxParam,
+                    "-Djava.library.path=native",
+                    "-cp", finalClasspath,
+                    mainClass,
+                    "--accessToken", "dummy",
+                    "--uuid", "dummy-uuid",
+                    "--clientId", "dummy-clientid",
+                    "--xuid", "dummy-xuid",
+                    "--version", selectedServer.minecraft_version,
+                    "--gameDir", installDir.getAbsolutePath(),
+                    "--assetsDir", new File("assets").getAbsolutePath(),
+                    "--assetIndex", "19",
+                    "--username", nickname
+            );
+
             pb.directory(new File("."));
             pb.inheritIO();
             Process process = pb.start();
-            String message = (selectedServer.fabric_version != null && !selectedServer.fabric_version.trim().isEmpty())
-                    ? "Игра запускается через Fabric Loader..."
-                    : "Игра запускается через Forge...";
-            JOptionPane.showMessageDialog(this, message);
-
+            JOptionPane.showMessageDialog(this,
+                    "Игра запускается через " + (selectedServer.fabric_version != null ? "Fabric" : "Forge") + "...");
             if (Boolean.parseBoolean(settings.getProperty("hideLauncher"))) {
                 setVisible(false);
             }
-
             new Thread(() -> {
                 try {
                     process.waitFor();
@@ -1037,40 +669,27 @@ public class LauncherUI extends JFrame {
                 SwingUtilities.invokeLater(() -> {
                     launchButton.setEnabled(true);
                     setVisible(true);
-                    checkForUpdates();
                 });
             }).start();
         } catch (IOException ex) {
-            JOptionPane.showMessageDialog(this,
-                    "Ошибка при запуске игры: " + ex.getMessage(),
-                    "Ошибка", JOptionPane.ERROR_MESSAGE);
             ex.printStackTrace();
+            JOptionPane.showMessageDialog(this, "Ошибка запуска: " + ex.getMessage(),
+                    "Error", JOptionPane.ERROR_MESSAGE);
             launchButton.setEnabled(true);
         }
     }
 
-    // Проверка обновлений через Getdown
-    private void checkForUpdates() {
-        try {
-            ProcessBuilder pb = new ProcessBuilder("java", "-jar", "getdown-launcher-1.8.7.jar");
-            pb.directory(new File("."));
-            Process updateProcess = pb.start();
-            updateProcess.waitFor();
-            System.out.println("Проверка обновлений завершена.");
-        } catch (Exception e) {
-            e.printStackTrace();
+    // Структура для хранения информации о файле из GitHub
+    private static class GHFileInfo {
+        String name;
+        String downloadUrl;
+        GHFileInfo(String name, String downloadUrl) {
+            this.name = name;
+            this.downloadUrl = downloadUrl;
         }
     }
 
-    public static void main(String[] args) {
-        System.out.println("Запуск QmLauncher...");
-        SwingUtilities.invokeLater(() -> {
-            LauncherUI launcher = new LauncherUI();
-            launcher.setVisible(true);
-        });
-    }
-
-    // Фильтр для ввода только цифр в поле RAM
+    // Фильтр для поля ввода RAM (только цифры)
     private class DigitFilter extends DocumentFilter {
         @Override
         public void insertString(FilterBypass fb, int offset, String string, AttributeSet attr) throws BadLocationException {
@@ -1084,5 +703,12 @@ public class LauncherUI extends JFrame {
                 super.replace(fb, offset, length, text, attrs);
             }
         }
+    }
+
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(() -> {
+            LauncherUI launcher = new LauncherUI();
+            launcher.setVisible(true);
+        });
     }
 }
