@@ -17,6 +17,7 @@ import java.nio.file.Files;
 import java.util.*;
 import java.util.List;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -83,7 +84,7 @@ public class LauncherUI extends JFrame {
         }
     }
 
-    // Загрузка конфигурации серверов из servers.json
+    // Загрузка serverConfigs из servers.json
     private void loadServerConfigsInBackground() {
         new SwingWorker<ServerList, Void>() {
             @Override
@@ -128,7 +129,7 @@ public class LauncherUI extends JFrame {
         ((AbstractDocument) ramField.getDocument()).setDocumentFilter(new DigitFilter());
     }
 
-    // Папка установки для client.jar (скачивается в папку version/[server])
+    // Папка для client.jar: version/[server]
     private File getInstallDirForServer(String serverName) {
         File dir = new File("version", serverName);
         if (!dir.exists()) {
@@ -270,58 +271,60 @@ public class LauncherUI extends JFrame {
     }
 
     /*
-     * При нажатии на "Установить игру" запускаются две параллельные задачи:
-     * 1. Скачивание client.jar (если ссылка заканчивается на ".jar") в папку
-     * version/[сервер].
-     * 2. Если в рабочей директории (папка лаунчера) отсутствуют каталоги assets,
-     * lib или native,
-     * автоматически загружаются архивы из GitHub, объединяются и извлекаются в
-     * подпапки с именами групп (например, "assets", "lib", "native").
+     * При нажатии на "Установить игру" запускается одна задача,
+     * которая скачивает архивы (если отсутствуют каталоги assets, lib, native) и
+     * client.jar (если ссылка заканчивается на ".jar")
+     * При этом используется прогресс-бар с процентами.
      */
     private void installGameWithProgress() {
-        // Создаем диалог с индикатором загрузки
+        // Создаем диалог с прогресс-баром
         JDialog progressDialog = new JDialog(this, "Установка...", true);
-        JProgressBar progressBar = new JProgressBar();
-        progressBar.setIndeterminate(true);
+        JProgressBar progressBar = new JProgressBar(0, 100);
+        progressBar.setStringPainted(true);
         progressDialog.add(progressBar);
         progressDialog.setSize(300, 100);
         progressDialog.setLocationRelativeTo(this);
 
-        new DownloadAllArchivesTask() {
+        String serverName = (String) serverComboBox.getSelectedItem();
+        ServerConfig sc = getServerConfigByName(serverName);
+        DownloadAllComponentsTask task = new DownloadAllComponentsTask(sc, serverName) {
+            @Override
+            protected void process(List<Integer> chunks) {
+                if (!chunks.isEmpty()) {
+                    progressBar.setValue(chunks.get(chunks.size() - 1));
+                }
+            }
+
             @Override
             protected void done() {
                 progressDialog.dispose();
                 launchButton.setEnabled(true);
-                System.out.println("DownloadAllArchivesTask завершена.");
+                System.out.println("DownloadAllComponentsTask завершена.");
             }
-        }.execute();
+        };
+        task.execute();
         progressDialog.setVisible(true);
     }
 
-    // Задача для загрузки архивов в формате ZIP: получает список файлов из GitHub,
-    // группирует их по префиксу и обрабатывает каждую группу параллельно
-    private class DownloadAllArchivesTask extends SwingWorker<Void, Integer> {
+    // Задача для загрузки архивов и client.jar с обновлением прогресса
+    private class DownloadAllComponentsTask extends SwingWorker<Void, Integer> {
+        private final ServerConfig serverConfig;
+        private final String serverName;
+
+        public DownloadAllComponentsTask(ServerConfig serverConfig, String serverName) {
+            this.serverConfig = serverConfig;
+            this.serverName = serverName;
+        }
+
         @Override
         protected Void doInBackground() throws Exception {
-            // Если каталоги assets, lib и native уже существуют, пропускаем загрузку
-            // архивов
-            if (new File("assets").exists() && new File("lib").exists() && new File("native").exists()) {
-                System.out.println("assets, lib, native уже существуют — скачивание архивов пропущено.");
-                return null;
-            }
+            // Считаем, сколько всего единиц работы: сумма частей всех архивов (ZIP) плюс 1,
+            // если нужно скачать client.jar.
             String apiUrl = "https://api.github.com/repos/qpov/QmLauncher/contents/data?ref=refs/heads/main";
             List<GHFileInfo> files = fetchGitHubFiles(apiUrl);
             System.out.println("Найдено файлов в data: " + files.size());
-            if (files.isEmpty()) {
-                System.out.println("Файлы в папке data не найдены.");
-                return null;
-            }
-            // Вывод всех имен файлов для отладки
-            for (GHFileInfo fi : files) {
-                System.out.println("Файл: " + fi.name);
-            }
-            // Группируем файлы по префиксу – учитываем только файлы в формате ZIP
             Map<String, List<GHFileInfo>> groups = new HashMap<>();
+            // Группируем только ZIP-файлы
             for (GHFileInfo fi : files) {
                 String lower = fi.name.toLowerCase();
                 if (!lower.contains(".zip."))
@@ -336,34 +339,41 @@ public class LauncherUI extends JFrame {
                 groups.computeIfAbsent(prefix, k -> new ArrayList<>()).add(fi);
             }
             System.out.println("Найдено групп архивов: " + groups.size());
-            for (String key : groups.keySet()) {
-                System.out.println("Группа: " + key + ", файлов: " + groups.get(key).size());
+            int totalParts = 0;
+            for (List<GHFileInfo> list : groups.values()) {
+                totalParts += list.size();
             }
-            // Обрабатываем каждую группу параллельно
-            ExecutorService groupExecutor = Executors.newFixedThreadPool(groups.size());
-            List<Future<?>> groupFutures = new ArrayList<>();
+            boolean needClient = serverConfig != null && serverConfig.download_link.toLowerCase().endsWith(".jar");
+            int totalUnits = totalParts + (needClient ? 1 : 0);
+            final AtomicInteger completedUnits = new AtomicInteger(0);
+            // Обрабатываем каждую группу последовательно (но скачивание частей внутри
+            // группы происходит параллельно)
             for (Map.Entry<String, List<GHFileInfo>> entry : groups.entrySet()) {
-                groupFutures.add(groupExecutor.submit(() -> {
-                    String prefix = entry.getKey();
-                    List<GHFileInfo> groupFiles = entry.getValue();
-                    groupFiles.sort(Comparator.comparing(fi -> fi.name));
-                    System.out.println("Обрабатывается группа: " + prefix + ", файлов: " + groupFiles.size());
-                    try {
-                        File combined = combineParts(prefix, groupFiles);
-                        System.out.println("Объединённый архив: " + combined.getAbsolutePath());
-                        // Извлекаем архив в подпапку с именем группы
-                        File destDir = new File(System.getProperty("user.dir"), prefix);
-                        extractArchive(combined, destDir);
-                        combined.delete();
-                    } catch (Exception ex) {
-                        System.out.println("Ошибка при обработке группы " + prefix + ": " + ex.getMessage());
-                        ex.printStackTrace();
-                    }
-                }));
+                String prefix = entry.getKey();
+                List<GHFileInfo> groupFiles = entry.getValue();
+                groupFiles.sort(Comparator.comparing(fi -> fi.name));
+                System.out.println("Обрабатывается группа: " + prefix + ", файлов: " + groupFiles.size());
+                File combined = combineParts(prefix, groupFiles, completedUnits, totalUnits);
+                System.out.println("Объединённый архив: " + combined.getAbsolutePath());
+                // Извлекаем архив напрямую в рабочую директорию (так как внутри архива, как
+                // ожидается, уже есть нужная структура)
+                extractArchive(combined, new File(System.getProperty("user.dir")));
+                combined.delete();
             }
-            groupExecutor.shutdown();
-            for (Future<?> f : groupFutures) {
-                f.get();
+            // Скачиваем client.jar, если нужно
+            if (needClient) {
+                String clientURL = serverConfig.download_link;
+                File installDir = getInstallDirForServer(serverName);
+                if (!installDir.exists())
+                    installDir.mkdirs();
+                File clientJar = new File(installDir, "client.jar");
+                if (!clientJar.exists()) {
+                    System.out.println("Скачиваем client.jar для сервера: " + serverName);
+                    downloadFile(clientURL, clientJar);
+                }
+                int done = completedUnits.incrementAndGet();
+                setProgress((done * 100) / totalUnits);
+                publish((done * 100) / totalUnits);
             }
             return null;
         }
@@ -393,10 +403,9 @@ public class LauncherUI extends JFrame {
             return result;
         }
 
-        // Параллельное скачивание всех частей группы
-        private File combineParts(String prefix, List<GHFileInfo> parts)
+        // Скачивание всех частей группы параллельно с обновлением прогресса
+        private File combineParts(String prefix, List<GHFileInfo> parts, AtomicInteger completedUnits, int totalUnits)
                 throws IOException, InterruptedException, ExecutionException {
-            // Для ZIP всегда ext = ".zip"
             String ext = ".zip";
             File combinedFile = new File(prefix + ext);
             if (combinedFile.exists())
@@ -409,6 +418,9 @@ public class LauncherUI extends JFrame {
                     File tempPart = File.createTempFile("archpart", ".part");
                     System.out.println("Скачивание части: " + fi.name);
                     downloadFile(fi.downloadUrl, tempPart);
+                    int done = completedUnits.incrementAndGet();
+                    setProgress((done * 100) / totalUnits);
+                    publish((done * 100) / totalUnits);
                     return tempPart;
                 });
                 futures.add(future);
@@ -452,7 +464,7 @@ public class LauncherUI extends JFrame {
         }
     }
 
-    // Распаковка zip-архива
+    // Распаковка ZIP-архива
     private void unzip(File zipFile, File destDir) throws IOException {
         System.out.println("unzip => " + zipFile.getName() + " в папку " + destDir.getAbsolutePath());
         byte[] buffer = new byte[4096];
@@ -478,7 +490,7 @@ public class LauncherUI extends JFrame {
         }
     }
 
-    // Защита от Zip Slip для zip-архивов
+    // Защита от Zip Slip для ZIP-архивов
     private File newFile(File destinationDir, String entryName) throws IOException {
         File destFile = new File(destinationDir, entryName);
         String destDirPath = destinationDir.getCanonicalPath();
@@ -516,15 +528,16 @@ public class LauncherUI extends JFrame {
         }
     }
 
-    // Запуск игры с пустым baseClasspath (заполните библиотеки сами)
+    // Запуск игры с пустым baseClasspath (заполните сами необходимые библиотеки)
     private void runGame(File installDir, ServerConfig selectedServer, String nickname) {
         try {
             launchButton.setEnabled(false);
             String clientJarPath = new File(installDir, "client.jar").getAbsolutePath();
             String maxRam = ramField.getText().trim();
             String xmxParam = "-Xmx" + maxRam + "G";
-            // Пустой baseClasspath – заполните своими библиотеками
-            String baseClasspath = clientJarPath + ";lib/ll/night-config/toml/3.7.4/toml-3.7.4.jar"
+            // Пустой baseClasspath – заполните его своими библиотеками
+            String baseClasspath = clientJarPath
+                    + ";lib/ll/night-config/toml/3.7.4/toml-3.7.4.jar"
                     + ";lib/com/fasterxml/jackson/core/jackson-annotations/2.13.4/jackson-annotations-2.13.4.jar"
                     + ";lib/com/fasterxml/jackson/core/jackson-core/2.13.4/jackson-core-2.13.4.jar"
                     + ";lib/com/fasterxml/jackson/core/jackson-databind/2.13.4.2/jackson-databind-2.13.4.2.jar"
