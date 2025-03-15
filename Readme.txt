@@ -1,5 +1,5 @@
 # Компиляция (Windows PowerShell или CMD):
-javac -cp ".;lib/com/google/code/gson/gson/2.11.0/gson-2.11.0.jar;lib\flatlaf-3.5.4.jar;lib;lib\commons-compress-1.27.1.jar" -d bin src\com\launcher\*.java
+javac -cp ".;lib/com/google/code/gson/gson/2.11.0/gson-2.11.0.jar;lib\flatlaf-3.5.4.jar;lib\commons-compress-1.27.1.jar" -d bin src\com\launcher\*.java
 
 # Запуск:
 java -cp "bin;lib/com/google/code/gson/gson/2.11.0/gson-2.11.0.jar;lib\flatlaf-3.5.4.jar;lib\commons-compress-1.27.1.jar" com.launcher.LauncherUI
