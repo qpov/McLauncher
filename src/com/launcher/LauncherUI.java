@@ -14,6 +14,7 @@ import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.*;
 import java.util.List;
 import java.util.concurrent.*;
@@ -40,7 +41,7 @@ public class LauncherUI extends JFrame {
     protected List<ServerConfig> serverConfigs;
 
     public LauncherUI() {
-        setTitle("QmLauncher 1.6.5");
+        setTitle("QmLauncher 1.6.6");
         setSize(960, 540);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
@@ -84,7 +85,7 @@ public class LauncherUI extends JFrame {
         }
     }
 
-    // Загрузка serverConfigs из servers.json
+    // Фоновая загрузка конфигурации серверов из servers.json
     private void loadServerConfigsInBackground() {
         new SwingWorker<ServerList, Void>() {
             @Override
@@ -129,7 +130,7 @@ public class LauncherUI extends JFrame {
         ((AbstractDocument) ramField.getDocument()).setDocumentFilter(new DigitFilter());
     }
 
-    // Папка для client.jar: version/[server]
+    // Папка установки для client.jar (скачивается в version/[server])
     private File getInstallDirForServer(String serverName) {
         File dir = new File("version", serverName);
         if (!dir.exists()) {
@@ -162,7 +163,7 @@ public class LauncherUI extends JFrame {
         topPanel.add(hideLauncherCheckBox);
         panel.add(topPanel, BorderLayout.NORTH);
 
-        // Панель модов (если требуется)
+        // Панель модов
         modPanel = new JPanel();
         modPanel.setBorder(BorderFactory.createTitledBorder("Моды"));
         modPanel.setLayout(new BoxLayout(modPanel, BoxLayout.Y_AXIS));
@@ -213,8 +214,27 @@ public class LauncherUI extends JFrame {
 
         reinstallGameButton = new JButton("Переустановить");
         reinstallGameButton.addActionListener(e -> {
-            launchButton.setEnabled(false);
-            installGameWithProgress();
+            int response = JOptionPane.showConfirmDialog(this,
+                    "Вы уверены, что хотите переустановить игру?",
+                    "Подтверждение переустановки", JOptionPane.YES_NO_OPTION);
+            if (response == JOptionPane.YES_OPTION) {
+                String serverName = (String) serverComboBox.getSelectedItem();
+                if (serverName != null) {
+                    File installDir = getInstallDirForServer(serverName);
+                    File clientFile = new File(installDir, "client.jar");
+                    if (clientFile.exists()) {
+                        clientFile.delete();
+                    }
+                }
+                // Для assets и native удаляем полностью
+                deleteDirectory(new File("assets"));
+                deleteDirectory(new File("native"));
+                // Для lib удаляем все, кроме необходимых файлов (например, "launcher-lib1.jar"
+                // и "launcher-lib2.jar")
+                deleteLibArchive(new File("lib"), new String[] { "launcher-lib1.jar", "launcher-lib2.jar" });
+                launchButton.setEnabled(false);
+                installGameWithProgress();
+            }
         });
         buttonsPanel.add(reinstallGameButton);
 
@@ -230,6 +250,50 @@ public class LauncherUI extends JFrame {
 
         panel.add(buttonsPanel, BorderLayout.SOUTH);
         add(panel);
+    }
+
+    // Рекурсивное удаление каталога (удаляет все содержимое)
+    private void deleteDirectory(File dir) {
+        if (dir.exists()) {
+            File[] files = dir.listFiles();
+            if (files != null) {
+                for (File file : files) {
+                    if (file.isDirectory()) {
+                        deleteDirectory(file);
+                    } else {
+                        file.delete();
+                    }
+                }
+            }
+            dir.delete();
+        }
+    }
+
+    // Удаление файлов из каталога lib, кроме тех, что указаны в preserveNames
+    private void deleteLibArchive(File dir, String[] preserveNames) {
+        if (dir.exists()) {
+            File[] files = dir.listFiles();
+            if (files != null) {
+                for (File file : files) {
+                    if (file.isDirectory()) {
+                        deleteLibArchive(file, preserveNames);
+                    } else {
+                        boolean preserve = false;
+                        if (preserveNames != null) {
+                            for (String name : preserveNames) {
+                                if (file.getName().equals(name)) {
+                                    preserve = true;
+                                    break;
+                                }
+                            }
+                        }
+                        if (!preserve) {
+                            file.delete();
+                        }
+                    }
+                }
+            }
+        }
     }
 
     private void applyTheme(String theme) {
@@ -271,13 +335,16 @@ public class LauncherUI extends JFrame {
     }
 
     /*
-     * При нажатии на "Установить игру" запускается одна задача,
-     * которая скачивает архивы (если отсутствуют каталоги assets, lib, native) и
-     * client.jar (если ссылка заканчивается на ".jar")
-     * При этом используется прогресс-бар с процентами.
+     * При нажатии на "Установить игру" запускается задача, которая:
+     * 1. Скачивает архивные части (если в рабочей директории отсутствуют каталоги
+     * assets, lib или native)
+     * – части объединяются и извлекаются в подпапки с именами групп (без лишней
+     * вложенности).
+     * 2. Скачивает client.jar (если ссылка заканчивается на ".jar") в папку
+     * version/[сервер].
+     * Прогресс отображается в процентах.
      */
     private void installGameWithProgress() {
-        // Создаем диалог с прогресс-баром
         JDialog progressDialog = new JDialog(this, "Установка...", true);
         JProgressBar progressBar = new JProgressBar(0, 100);
         progressBar.setStringPainted(true);
@@ -298,6 +365,7 @@ public class LauncherUI extends JFrame {
             @Override
             protected void done() {
                 progressDialog.dispose();
+                updateLaunchButton();
                 launchButton.setEnabled(true);
                 System.out.println("DownloadAllComponentsTask завершена.");
             }
@@ -306,7 +374,7 @@ public class LauncherUI extends JFrame {
         progressDialog.setVisible(true);
     }
 
-    // Задача для загрузки архивов и client.jar с обновлением прогресса
+    // Задача для загрузки архивов и client.jar с обновлением процента выполнения
     private class DownloadAllComponentsTask extends SwingWorker<Void, Integer> {
         private final ServerConfig serverConfig;
         private final String serverName;
@@ -318,13 +386,10 @@ public class LauncherUI extends JFrame {
 
         @Override
         protected Void doInBackground() throws Exception {
-            // Считаем, сколько всего единиц работы: сумма частей всех архивов (ZIP) плюс 1,
-            // если нужно скачать client.jar.
             String apiUrl = "https://api.github.com/repos/qpov/QmLauncher/contents/data?ref=refs/heads/main";
             List<GHFileInfo> files = fetchGitHubFiles(apiUrl);
             System.out.println("Найдено файлов в data: " + files.size());
             Map<String, List<GHFileInfo>> groups = new HashMap<>();
-            // Группируем только ZIP-файлы
             for (GHFileInfo fi : files) {
                 String lower = fi.name.toLowerCase();
                 if (!lower.contains(".zip."))
@@ -346,8 +411,7 @@ public class LauncherUI extends JFrame {
             boolean needClient = serverConfig != null && serverConfig.download_link.toLowerCase().endsWith(".jar");
             int totalUnits = totalParts + (needClient ? 1 : 0);
             final AtomicInteger completedUnits = new AtomicInteger(0);
-            // Обрабатываем каждую группу последовательно (но скачивание частей внутри
-            // группы происходит параллельно)
+
             for (Map.Entry<String, List<GHFileInfo>> entry : groups.entrySet()) {
                 String prefix = entry.getKey();
                 List<GHFileInfo> groupFiles = entry.getValue();
@@ -355,25 +419,34 @@ public class LauncherUI extends JFrame {
                 System.out.println("Обрабатывается группа: " + prefix + ", файлов: " + groupFiles.size());
                 File combined = combineParts(prefix, groupFiles, completedUnits, totalUnits);
                 System.out.println("Объединённый архив: " + combined.getAbsolutePath());
-                // Извлекаем архив напрямую в рабочую директорию (так как внутри архива, как
-                // ожидается, уже есть нужная структура)
-                extractArchive(combined, new File(System.getProperty("user.dir")));
+                // Для группы lib используем папку lib из рабочей директории, для остальных –
+                // создаем папку по префиксу
+                File destDir;
+                if (prefix.equalsIgnoreCase("lib")) {
+                    destDir = new File(System.getProperty("user.dir"), "lib");
+                } else {
+                    destDir = new File(System.getProperty("user.dir"), prefix);
+                }
+                unzip(combined, destDir);
+                flattenDirectory(destDir);
                 combined.delete();
             }
-            // Скачиваем client.jar, если нужно
+
             if (needClient) {
                 String clientURL = serverConfig.download_link;
                 File installDir = getInstallDirForServer(serverName);
                 if (!installDir.exists())
                     installDir.mkdirs();
                 File clientJar = new File(installDir, "client.jar");
-                if (!clientJar.exists()) {
-                    System.out.println("Скачиваем client.jar для сервера: " + serverName);
-                    downloadFile(clientURL, clientJar);
+                if (clientJar.exists()) {
+                    clientJar.delete();
                 }
-                int done = completedUnits.incrementAndGet();
-                setProgress((done * 100) / totalUnits);
-                publish((done * 100) / totalUnits);
+                System.out.println("Скачиваем client.jar для сервера: " + serverName);
+                downloadFile(clientURL, clientJar);
+                completedUnits.incrementAndGet();
+                int percent = (completedUnits.get() * 100) / totalUnits;
+                setProgress(percent);
+                publish(percent);
             }
             return null;
         }
@@ -403,7 +476,7 @@ public class LauncherUI extends JFrame {
             return result;
         }
 
-        // Скачивание всех частей группы параллельно с обновлением прогресса
+        // Параллельное скачивание всех частей группы
         private File combineParts(String prefix, List<GHFileInfo> parts, AtomicInteger completedUnits, int totalUnits)
                 throws IOException, InterruptedException, ExecutionException {
             String ext = ".zip";
@@ -419,8 +492,9 @@ public class LauncherUI extends JFrame {
                     System.out.println("Скачивание части: " + fi.name);
                     downloadFile(fi.downloadUrl, tempPart);
                     int done = completedUnits.incrementAndGet();
-                    setProgress((done * 100) / totalUnits);
-                    publish((done * 100) / totalUnits);
+                    int percent = (done * 100) / totalUnits;
+                    setProgress(percent);
+                    publish(percent);
                     return tempPart;
                 });
                 futures.add(future);
@@ -454,6 +528,31 @@ public class LauncherUI extends JFrame {
             }
         }
 
+        private void unzip(File zipFile, File destDir) throws IOException {
+            System.out.println("unzip => " + zipFile.getName() + " в папку " + destDir.getAbsolutePath());
+            byte[] buffer = new byte[4096];
+            if (!destDir.exists())
+                destDir.mkdirs();
+            try (ZipInputStream zis = new ZipInputStream(new FileInputStream(zipFile))) {
+                ZipEntry entry;
+                while ((entry = zis.getNextEntry()) != null) {
+                    File newFile = LauncherUI.this.createNewFile(destDir, entry.getName());
+                    if (entry.isDirectory()) {
+                        newFile.mkdirs();
+                    } else {
+                        newFile.getParentFile().mkdirs();
+                        try (FileOutputStream fos = new FileOutputStream(newFile)) {
+                            int len;
+                            while ((len = zis.read(buffer)) > 0) {
+                                fos.write(buffer, 0, len);
+                            }
+                        }
+                    }
+                    zis.closeEntry();
+                }
+            }
+        }
+
         private void extractArchive(File archive, File destDir) throws IOException {
             String name = archive.getName().toLowerCase();
             if (name.endsWith(".zip")) {
@@ -464,34 +563,8 @@ public class LauncherUI extends JFrame {
         }
     }
 
-    // Распаковка ZIP-архива
-    private void unzip(File zipFile, File destDir) throws IOException {
-        System.out.println("unzip => " + zipFile.getName() + " в папку " + destDir.getAbsolutePath());
-        byte[] buffer = new byte[4096];
-        if (!destDir.exists())
-            destDir.mkdirs();
-        try (ZipInputStream zis = new ZipInputStream(new FileInputStream(zipFile))) {
-            ZipEntry entry;
-            while ((entry = zis.getNextEntry()) != null) {
-                File newFile = newFile(destDir, entry.getName());
-                if (entry.isDirectory()) {
-                    newFile.mkdirs();
-                } else {
-                    newFile.getParentFile().mkdirs();
-                    try (FileOutputStream fos = new FileOutputStream(newFile)) {
-                        int len;
-                        while ((len = zis.read(buffer)) > 0) {
-                            fos.write(buffer, 0, len);
-                        }
-                    }
-                }
-                zis.closeEntry();
-            }
-        }
-    }
-
-    // Защита от Zip Slip для ZIP-архивов
-    private File newFile(File destinationDir, String entryName) throws IOException {
+    // Вспомогательный метод для создания нового файла из ZIP-архива
+    private File createNewFile(File destinationDir, String entryName) throws IOException {
         File destFile = new File(destinationDir, entryName);
         String destDirPath = destinationDir.getCanonicalPath();
         String destFilePath = destFile.getCanonicalPath();
@@ -499,6 +572,40 @@ public class LauncherUI extends JFrame {
             throw new IOException("Zip Slip: " + entryName);
         }
         return destFile;
+    }
+
+    // Метод "выравнивания" содержимого каталога: если destDir содержит ровно одну
+    // папку, перемещаем её содержимое на уровень выше.
+    // Для папки lib: если в lib содержится подпапка lib, перемещаем её содержимое
+    // вверх, перезаписывая при необходимости.
+    private void flattenDirectory(File destDir) throws IOException {
+        if (destDir.getName().equalsIgnoreCase("lib")) {
+            File innerLib = new File(destDir, "lib");
+            if (innerLib.exists() && innerLib.isDirectory()) {
+                File[] innerFiles = innerLib.listFiles();
+                if (innerFiles != null) {
+                    for (File f : innerFiles) {
+                        // Всегда перемещаем, заменяя существующие файлы
+                        Files.move(f.toPath(), new File(destDir, f.getName()).toPath(),
+                                StandardCopyOption.REPLACE_EXISTING);
+                    }
+                }
+                innerLib.delete();
+            }
+        } else {
+            File[] files = destDir.listFiles();
+            if (files != null && files.length == 1 && files[0].isDirectory()) {
+                File inner = files[0];
+                File[] innerFiles = inner.listFiles();
+                if (innerFiles != null) {
+                    for (File f : innerFiles) {
+                        Files.move(f.toPath(), new File(destDir, f.getName()).toPath(),
+                                StandardCopyOption.REPLACE_EXISTING);
+                    }
+                }
+                inner.delete();
+            }
+        }
     }
 
     // Класс для скачивания client.jar
@@ -528,14 +635,13 @@ public class LauncherUI extends JFrame {
         }
     }
 
-    // Запуск игры с пустым baseClasspath (заполните сами необходимые библиотеки)
+    // Запуск игры с пустым baseClasspath (заполните его необходимыми библиотеками)
     private void runGame(File installDir, ServerConfig selectedServer, String nickname) {
         try {
             launchButton.setEnabled(false);
             String clientJarPath = new File(installDir, "client.jar").getAbsolutePath();
             String maxRam = ramField.getText().trim();
             String xmxParam = "-Xmx" + maxRam + "G";
-            // Пустой baseClasspath – заполните его своими библиотеками
             String baseClasspath = clientJarPath
                     + ";lib/ll/night-config/toml/3.7.4/toml-3.7.4.jar"
                     + ";lib/com/fasterxml/jackson/core/jackson-annotations/2.13.4/jackson-annotations-2.13.4.jar"
@@ -760,7 +866,7 @@ public class LauncherUI extends JFrame {
         }
 
         @Override
-        public void replace(FilterBypass fb, int offset, int length, String text, AttributeSet attrs)
+        public void replace(DocumentFilter.FilterBypass fb, int offset, int length, String text, AttributeSet attrs)
                 throws BadLocationException {
             if (text.matches("\\d+")) {
                 super.replace(fb, offset, length, text, attrs);
