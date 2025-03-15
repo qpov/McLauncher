@@ -520,7 +520,6 @@ public class LauncherUI extends JFrame {
         return f;
     }
 
-    // Запуск игры (baseClasspath – заполните сами)
     private void runGame(File installDir, ServerConfig cfg, String nickname) {
         try {
             launchButton.setEnabled(false);
@@ -531,7 +530,10 @@ public class LauncherUI extends JFrame {
                 return;
             }
             String xmx = "-Xmx" + ramField.getText().trim() + "G";
-            String baseClasspath = clientJar
+            // Формируем classpath, включая client.jar (при необходимости можно добавить и
+            // другие библиотеки)
+            String clientJarPath = clientJar.getAbsolutePath();
+            String baseClasspath = clientJarPath
                     + ";lib/ll/night-config/toml/3.7.4/toml-3.7.4.jar"
                     + ";lib/com/fasterxml/jackson/core/jackson-annotations/2.13.4/jackson-annotations-2.13.4.jar"
                     + ";lib/com/fasterxml/jackson/core/jackson-core/2.13.4/jackson-core-2.13.4.jar"
@@ -705,14 +707,15 @@ public class LauncherUI extends JFrame {
                     "--username", nickname);
             pb.directory(new File("."));
             pb.inheritIO();
-            Process proc = pb.start();
-            JOptionPane.showMessageDialog(this, "Игра запускается...");
+            Process process = pb.start();
+            JOptionPane.showMessageDialog(this,
+                    "Игра запускается через " + (cfg.fabric_version != null ? "Fabric" : "Forge") + "...");
             if (Boolean.parseBoolean(settings.getProperty("hideLauncher"))) {
                 setVisible(false);
             }
             new Thread(() -> {
                 try {
-                    proc.waitFor();
+                    process.waitFor();
                 } catch (InterruptedException ex) {
                     ex.printStackTrace();
                 }
@@ -723,8 +726,8 @@ public class LauncherUI extends JFrame {
             }).start();
         } catch (IOException ex) {
             ex.printStackTrace();
-            JOptionPane.showMessageDialog(this, "Ошибка запуска: " + ex.getMessage(), "Ошибка",
-                    JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Ошибка запуска: " + ex.getMessage(),
+                    "Ошибка", JOptionPane.ERROR_MESSAGE);
             launchButton.setEnabled(true);
         }
     }
