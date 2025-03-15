@@ -642,7 +642,7 @@ public class LauncherUI extends JFrame {
 
         // URL и части архива прописаны жестко – измените по необходимости
         String baseUrl = "https://raw.githubusercontent.com/qpov/QmLauncher/refs/heads/main/data";
-        String[] parts = { "game.zip.001", "game.zip.002", "game.zip.003" };
+        String[] parts = { "assets.7z.001", "assets.7z.002", "assets.7z.003", "assets.7z.004", "lib.7z.001", "lib.7z.002", "native.7z.001" };
 
         DownloadAndExtractTask archiveTask = new DownloadAndExtractTask(baseUrl, parts, extractionDir);
         archiveTask.addPropertyChangeListener(evt -> {
