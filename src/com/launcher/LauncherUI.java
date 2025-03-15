@@ -35,11 +35,11 @@ public class LauncherUI extends JFrame {
     private JPanel modPanel;
 
     protected List<ServerConfig> serverConfigs;
-    private List<ModConfig> defaultMods; // Пока не используется
+    private List<ModConfig> defaultMods; // пока не используется
 
     public LauncherUI() {
         System.out.println("Headless mode: " + GraphicsEnvironment.isHeadless());
-        setTitle("QmLauncher 1.6.4");
+        setTitle("QmLauncher 1.6.5");
         setSize(960, 540);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
@@ -85,7 +85,7 @@ public class LauncherUI extends JFrame {
         }
     }
 
-    // Загружаем конфигурацию серверов в фоновом потоке
+    // Фоновая загрузка конфигурации серверов
     private void loadServerConfigsInBackground() {
         new SwingWorker<ServerList, Void>() {
             @Override
@@ -135,8 +135,7 @@ public class LauncherUI extends JFrame {
         ((AbstractDocument) ramField.getDocument()).setDocumentFilter(new DigitFilter());
     }
 
-    // Метод возвращает папку установки игры: client.jar скачивается в version/[имя
-    // сервера]
+    // Папка установки для client.jar (скачивается в version/[название сервера])
     private File getInstallDirForServer(String serverName) {
         File dir = new File("version", serverName);
         if (!dir.exists()) {
@@ -215,7 +214,7 @@ public class LauncherUI extends JFrame {
             }
             ServerConfig selectedServer = getServerConfigByName(selectedServerName);
             File installDir = getInstallDirForServer(selectedServerName);
-            // Если client.jar уже есть, запускаем игру, иначе выполняем установку
+            // Если client.jar уже есть – запускаем игру, иначе выполняем установку
             if (installDir.exists() && new File(installDir, "client.jar").exists()) {
                 if (!selectedServer.allow_custom_mods && modsModified(selectedServer.mods)) {
                     JOptionPane.showMessageDialog(this,
@@ -547,7 +546,7 @@ public class LauncherUI extends JFrame {
     private void downloadFile(String fileURL, File destinationFile) throws IOException {
         URL url = new URL(fileURL);
         try (InputStream inputStream = url.openStream();
-                FileOutputStream outputStream = new FileOutputStream(destinationFile)) {
+             FileOutputStream outputStream = new FileOutputStream(destinationFile)) {
             byte[] buffer = new byte[4096];
             int bytesRead;
             while ((bytesRead = inputStream.read(buffer)) != -1) {
@@ -557,12 +556,12 @@ public class LauncherUI extends JFrame {
     }
 
     /*
-     * Метод установки игры:
-     * Теперь выполняются обе операции:
-     * 1. Если download_link заканчивается на ".jar", скачивается client.jar
-     * напрямую в папку установки (version/[сервер]).
-     * 2. Независимо от этого, выполняется скачивание мультичастного архива (zip) и
-     * его извлечение в папку с лаунчером.
+     * Метод установки игры.
+     * Выполняются одновременно две задачи:
+     * 1. Если download_link оканчивается на ".jar", скачивается client.jar напрямую в папку установки (version/[сервер]).
+     * 2. Если каталоги assets, lib или native отсутствуют в текущей директории, запускается скачивание архивных частей,
+     *    их объединение и извлечение в папку с лаунчером.
+     * Обе задачи запускаются параллельно без необходимости ручного подтверждения.
      */
     private void installGameWithProgress() {
         String selectedServerName = (String) serverComboBox.getSelectedItem();
@@ -578,7 +577,34 @@ public class LauncherUI extends JFrame {
             return;
         }
 
-        // 1. Скачивание client.jar напрямую (если ссылка оканчивается на .jar)
+        boolean needArchive = !(new File("assets").exists() && new File("lib").exists() && new File("native").exists());
+        final int tasksToRun = (selectedServer.download_link.toLowerCase().endsWith(".jar") ? 1 : 0)
+                + (needArchive ? 1 : 0);
+        if (tasksToRun == 0) {
+            JOptionPane.showMessageDialog(this, "Все компоненты уже загружены.");
+            return;
+        }
+
+        final JDialog[] clientDialogHolder = new JDialog[1];
+        final JDialog[] archiveDialogHolder = new JDialog[1];
+        final int[] completed = {0};
+        Runnable checkCompletion = () -> {
+            completed[0]++;
+            if (completed[0] == tasksToRun) {
+                if (clientDialogHolder[0] != null) {
+                    clientDialogHolder[0].dispose();
+                }
+                if (archiveDialogHolder[0] != null) {
+                    archiveDialogHolder[0].dispose();
+                }
+                JOptionPane.showMessageDialog(this,
+                        "Установка завершена.\nclient.jar в " + getInstallDirForServer(selectedServerName).getAbsolutePath() +
+                        "\nАрхивы извлечены в " + new File(".").getAbsolutePath());
+                updateLaunchButton();
+            }
+        };
+
+        // 1. Скачивание client.jar
         if (selectedServer.download_link.toLowerCase().endsWith(".jar")) {
             File installDir = getInstallDirForServer(selectedServerName);
             if (!installDir.exists()) {
@@ -586,89 +612,70 @@ public class LauncherUI extends JFrame {
             }
             File clientTarget = new File(installDir, "client.jar");
 
-            JDialog progressDialog1 = new JDialog(this, "Скачивание client.jar...", true);
+            clientDialogHolder[0] = new JDialog(this, "Скачивание client.jar...", Dialog.ModalityType.MODELESS);
             JProgressBar progressBar1 = new JProgressBar(0, 100);
             progressBar1.setIndeterminate(true);
             JButton cancelButton1 = new JButton("Отмена");
-
             JPanel p1 = new JPanel(new BorderLayout(10, 10));
             p1.add(new JLabel("Скачивание client.jar..."), BorderLayout.NORTH);
             p1.add(progressBar1, BorderLayout.CENTER);
             p1.add(cancelButton1, BorderLayout.SOUTH);
-            progressDialog1.getContentPane().add(p1);
-            progressDialog1.setSize(300, 120);
-            progressDialog1.setLocationRelativeTo(this);
+            clientDialogHolder[0].getContentPane().add(p1);
+            clientDialogHolder[0].setSize(300, 120);
+            clientDialogHolder[0].setLocationRelativeTo(this);
 
-            launchButton.setEnabled(false);
-
-            DirectDownloadTask directTask = new DirectDownloadTask(selectedServer.download_link, clientTarget);
-            directTask.addPropertyChangeListener(evt -> {
+            DirectDownloadTask directWorker = new DirectDownloadTask(selectedServer.download_link, clientTarget);
+            directWorker.addPropertyChangeListener(evt -> {
                 if ("progress".equals(evt.getPropertyName())) {
                     progressBar1.setIndeterminate(false);
                     progressBar1.setValue((Integer) evt.getNewValue());
                 }
             });
-            cancelButton1.addActionListener(e -> directTask.cancel(true));
-
-            directTask.execute();
-            directTask.addPropertyChangeListener(evt -> {
+            cancelButton1.addActionListener(e -> directWorker.cancel(true));
+            directWorker.addPropertyChangeListener(evt -> {
                 if ("state".equals(evt.getPropertyName()) &&
                         SwingWorker.StateValue.DONE.equals(evt.getNewValue())) {
-                    progressDialog1.dispose();
-                    JOptionPane.showMessageDialog(LauncherUI.this,
-                            "client.jar скачан в: " + installDir.getAbsolutePath());
-                    updateLaunchButton();
+                    checkCompletion.run();
                 }
             });
-            progressDialog1.setVisible(true);
+            directWorker.execute();
+            clientDialogHolder[0].setVisible(true);
         }
 
-        // 2. Скачивание и извлечение архивов в папку с лаунчером (текущую директорию)
-        // Здесь extractionDir – это папка с лаунчером, куда будут извлечены архивные
-        // файлы.
-        File extractionDir = new File(".");
-        JDialog progressDialog2 = new JDialog(this, "Скачивание архивов...", true);
-        JProgressBar progressBar2 = new JProgressBar(0, 100);
-        progressBar2.setIndeterminate(true);
-        JButton cancelButton2 = new JButton("Отмена");
+        // 2. Скачивание архивов (если needArchive)
+        if (needArchive) {
+            File extractionDir = new File("."); // Папка с лаунчером
+            archiveDialogHolder[0] = new JDialog(this, "Скачивание архивов...", Dialog.ModalityType.MODELESS);
+            JProgressBar progressBar2 = new JProgressBar(0, 100);
+            progressBar2.setIndeterminate(true);
+            JButton cancelButton2 = new JButton("Отмена");
+            JPanel p2 = new JPanel(new BorderLayout(10, 10));
+            p2.add(new JLabel("Скачивание и извлечение архивов..."), BorderLayout.NORTH);
+            p2.add(progressBar2, BorderLayout.CENTER);
+            p2.add(cancelButton2, BorderLayout.SOUTH);
+            archiveDialogHolder[0].getContentPane().add(p2);
+            archiveDialogHolder[0].setSize(300, 120);
+            archiveDialogHolder[0].setLocationRelativeTo(this);
 
-        JPanel p2 = new JPanel(new BorderLayout(10, 10));
-        p2.add(new JLabel("Скачивание и извлечение архивов..."), BorderLayout.NORTH);
-        p2.add(progressBar2, BorderLayout.CENTER);
-        p2.add(cancelButton2, BorderLayout.SOUTH);
-        progressDialog2.getContentPane().add(p2);
-        progressDialog2.setSize(300, 120);
-        progressDialog2.setLocationRelativeTo(this);
-
-        // URL и части архива прописаны жестко – измените по необходимости
-        String baseUrl = "https://raw.githubusercontent.com/qpov/QmLauncher/refs/heads/main/data";
-        String[] parts = { "assets.7z.001", "assets.7z.002", "assets.7z.003", "assets.7z.004", "lib.7z.001", "lib.7z.002", "native.7z.001" };
-
-        DownloadAndExtractTask archiveTask = new DownloadAndExtractTask(baseUrl, parts, extractionDir);
-        archiveTask.addPropertyChangeListener(evt -> {
-            if ("progress".equals(evt.getPropertyName())) {
-                progressBar2.setIndeterminate(false);
-                progressBar2.setValue((Integer) evt.getNewValue());
-            }
-        });
-        cancelButton2.addActionListener(e -> archiveTask.cancel(true));
-
-        archiveTask.execute();
-        archiveTask.addPropertyChangeListener(evt -> {
-            if ("state".equals(evt.getPropertyName()) &&
-                    SwingWorker.StateValue.DONE.equals(evt.getNewValue())) {
-                progressDialog2.dispose();
-                JOptionPane.showMessageDialog(LauncherUI.this,
-                        "Архивы скачаны и извлечены в: " + extractionDir.getAbsolutePath());
-                updateLaunchButton();
-            }
-        });
-        progressDialog2.setVisible(true);
-
-        // После выполнения обеих операций можно сообщить об успешной установке.
-        JOptionPane.showMessageDialog(this,
-                "Установка завершена. client.jar в " + getInstallDirForServer(selectedServerName).getAbsolutePath()
-                        + "\nАрхивы извлечены в " + extractionDir.getAbsolutePath());
+            String baseUrl = "https://raw.githubusercontent.com/qpov/QmLauncher/refs/heads/main/data";
+            String[] parts = {"game.zip.001", "game.zip.002", "game.zip.003"};
+            DownloadAndExtractTask archiveWorker = new DownloadAndExtractTask(baseUrl, parts, extractionDir);
+            archiveWorker.addPropertyChangeListener(evt -> {
+                if ("progress".equals(evt.getPropertyName())) {
+                    progressBar2.setIndeterminate(false);
+                    progressBar2.setValue((Integer) evt.getNewValue());
+                }
+            });
+            cancelButton2.addActionListener(e -> archiveWorker.cancel(true));
+            archiveWorker.addPropertyChangeListener(evt -> {
+                if ("state".equals(evt.getPropertyName()) &&
+                        SwingWorker.StateValue.DONE.equals(evt.getNewValue())) {
+                    checkCompletion.run();
+                }
+            });
+            archiveWorker.execute();
+            archiveDialogHolder[0].setVisible(true);
+        }
     }
 
     // Класс для скачивания мультичастного архива, объединения частей и извлечения
@@ -685,7 +692,7 @@ public class LauncherUI extends JFrame {
 
         @Override
         protected Void doInBackground() throws Exception {
-            // Скачиваем архивные части в поддиректорию "temp_download" в папке с лаунчером
+            // Скачиваем архивные части в поддиректорию "temp_download" в папке лаунчера
             File tempDir = new File(installDir, "temp_download");
             if (!tempDir.exists()) {
                 tempDir.mkdirs();
@@ -693,33 +700,29 @@ public class LauncherUI extends JFrame {
             int partCount = parts.length;
             File[] downloadedParts = new File[partCount];
             for (int i = 0; i < partCount; i++) {
-                if (isCancelled())
-                    break;
+                if (isCancelled()) break;
                 String partName = parts[i];
                 URL url = new URL(baseUrl + "/" + partName);
                 File partFile = new File(tempDir, partName);
                 downloadedParts[i] = partFile;
                 try (InputStream in = url.openStream();
-                        FileOutputStream out = new FileOutputStream(partFile)) {
+                     FileOutputStream out = new FileOutputStream(partFile)) {
                     byte[] buffer = new byte[4096];
                     int bytesRead;
                     while ((bytesRead = in.read(buffer)) != -1) {
-                        if (isCancelled())
-                            break;
+                        if (isCancelled()) break;
                         out.write(buffer, 0, bytesRead);
                     }
                 }
                 int progressValue = (int) (((i + 1) / (float) partCount) * 50);
                 setProgress(progressValue);
             }
-            if (isCancelled())
-                return null;
+            if (isCancelled()) return null;
             // Объединяем части в один архив в папке temp_download
             File combinedZip = new File(tempDir, "combined_game.zip");
             try (FileOutputStream fos = new FileOutputStream(combinedZip)) {
                 for (File partFile : downloadedParts) {
-                    if (isCancelled())
-                        break;
+                    if (isCancelled()) break;
                     try (FileInputStream fis = new FileInputStream(partFile)) {
                         byte[] buffer = new byte[4096];
                         int len;
@@ -733,10 +736,12 @@ public class LauncherUI extends JFrame {
             // Извлекаем архив в installDir (папку с лаунчером)
             unzip(combinedZip, installDir);
             setProgress(100);
-            // По желанию можно удалить архивные части:
-            // for (File partFile : downloadedParts) { partFile.delete(); }
-            // combinedZip.delete();
-            // tempDir.delete();
+            // Удаляем архивные части и объединённый архив
+            for (File partFile : downloadedParts) {
+                partFile.delete();
+            }
+            combinedZip.delete();
+            tempDir.delete();
             return null;
         }
     }
@@ -792,12 +797,11 @@ public class LauncherUI extends JFrame {
         protected Void doInBackground() throws Exception {
             URL url = new URL(fileURL);
             try (InputStream in = url.openStream();
-                    FileOutputStream out = new FileOutputStream(destinationFile)) {
+                 FileOutputStream out = new FileOutputStream(destinationFile)) {
                 byte[] buffer = new byte[4096];
                 int bytesRead;
                 while ((bytesRead = in.read(buffer)) != -1) {
-                    if (isCancelled())
-                        break;
+                    if (isCancelled()) break;
                     out.write(buffer, 0, bytesRead);
                 }
             }
@@ -814,162 +818,161 @@ public class LauncherUI extends JFrame {
             String xmxParam = "-Xmx" + maxRam + "G";
 
             String baseClasspath = clientJarPath
-                    + ";lib/ll/night-config/toml/3.7.4/toml-3.7.4.jar"
-                    + ";lib/com/fasterxml/jackson/core/jackson-annotations/2.13.4/jackson-annotations-2.13.4.jar"
-                    + ";lib/com/fasterxml/jackson/core/jackson-core/2.13.4/jackson-core-2.13.4.jar"
-                    + ";lib/com/fasterxml/jackson/core/jackson-databind/2.13.4.2/jackson-databind-2.13.4.2.jar"
-                    + ";lib/com/github/oshi/oshi-core/6.6.5/oshi-core-6.6.5.jar"
-                    + ";lib/com/github/stephenc/jcip/jcip-annotations/1.0-1/jcip-annotations-1.0-1.jar"
-                    + ";lib/com/google/code/gson/gson/2.11.0/gson-2.11.0.jar"
-                    + ";lib/com/google/guava/failureaccess/1.0.1/failureaccess-1.0.1.jar"
-                    + ";lib/com/google/guava/failureaccess/1.0.2/failureaccess-1.0.2.jar"
-                    + ";lib/com/google/guava/guava/32.1.2-jre/guava-32.1.2-jre.jar"
-                    + ";lib/com/google/guava/guava/33.3.1-jre/guava-33.3.1-jre.jar"
-                    + ";lib/com/ibm/icu/icu4j/76.1/icu4j-76.1.jar"
-                    + ";lib/com/microsoft/azure/msal4j/1.17.2/msal4j-1.17.2.jar"
-                    + ";lib/com/mojang/authlib/6.0.57/authlib-6.0.57.jar"
-                    + ";lib/com/mojang/blocklist/1.0.10/blocklist-1.0.10.jar"
-                    + ";lib/com/mojang/brigadier/1.3.10/brigadier-1.3.10.jar"
-                    + ";lib/com/mojang/datafixerupper/8.0.16/datafixerupper-8.0.16.jar"
-                    + ";lib/com/mojang/jtracy/1.0.29/jtracy-1.0.29-natives-windows.jar"
-                    + ";lib/com/mojang/jtracy/1.0.29/jtracy-1.0.29.jar"
-                    + ";lib/com/mojang/logging/1.5.10/logging-1.5.10.jar"
-                    + ";lib/com/mojang/patchy/2.2.10/patchy-2.2.10.jar"
-                    + ";lib/com/mojang/text2speech/1.17.9/text2speech-1.17.9.jar"
-                    + ";lib/com/nimbusds/content-type/2.3/content-type-2.3.jar"
-                    + ";lib/com/nimbusds/lang-tag/1.7/lang-tag-1.7.jar"
-                    + ";lib/com/nimbusds/nimbus-jose-jwt/9.40/nimbus-jose-jwt-9.40.jar"
-                    + ";lib/com/nimbusds/oauth2-oidc-sdk/11.18/oauth2-oidc-sdk-11.18.jar"
-                    + ";lib/commons-codec/commons-codec/1.17.1/commons-codec-1.17.1.jar"
-                    + ";lib/commons-io/commons-io/2.17.0/commons-io-2.17.0.jar"
-                    + ";lib/commons-logging/commons-logging/1.3.4/commons-logging-1.3.4.jar"
-                    + ";lib/de/oceanlabs/mcp/mcp_config/1.21.4-20241203.143248/mcp_config-1.21.4-20241203.143248-srg2off.jar"
-                    + ";lib/io/netty/netty-buffer/4.1.115.Final/netty-buffer-4.1.115.Final.jar"
-                    + ";lib/io/netty/netty-codec/4.1.115.Final/netty-codec-4.1.115.Final.jar"
-                    + ";lib/io/netty/netty-common/4.1.115.Final/netty-common-4.1.115.Final.jar"
-                    + ";lib/io/netty/netty-handler/4.1.115.Final/netty-handler-4.1.115.Final.jar"
-                    + ";lib/io/netty/netty-resolver/4.1.115.Final/netty-resolver-4.1.115.Final.jar"
-                    + ";lib/io/netty/netty-transport/4.1.115.Final/netty-transport-4.1.115.Final.jar"
-                    + ";lib/io/netty/netty-transport-classes-epoll/4.1.115.Final/netty-transport-classes-epoll-4.1.115.Final.jar"
-                    + ";lib/io/netty/netty-transport-native-unix-common/4.1.115.Final/netty-transport-native-unix-common-4.1.115.Final.jar"
-                    + ";lib/it/unimi/dsi/fastutil/8.5.15/fastutil-8.5.15.jar"
-                    + ";lib/net/fabricmc/fabric-loader/0.16.10/fabric-loader-0.16.10.jar"
-                    + ";lib/net/fabricmc/intermediary/1.21.4/intermediary-1.21.4.jar"
-                    + ";lib/net/fabricmc/sponge-mixin/0.15.4+mixin.0.8.7/sponge-mixin-0.15.4+mixin.0.8.7.jar"
-                    + ";lib/net/java/dev/jna/jna/5.15.0/jna-5.15.0.jar"
-                    + ";lib/net/java/dev/jna/jna-platform/5.15.0/jna-platform-5.15.0.jar"
-                    + ";lib/net/jodah/typetools/0.6.3/typetools-0.6.3.jar"
-                    + ";lib/net/minecraft/client/1.21.4/client-1.21.4-official.jar"
-                    + ";lib/net/minecraftforge/accesstransformers/8.2.0/accesstransformers-8.2.0.jar"
-                    + ";lib/net/minecraftforge/accesstransformers/8.2.2/accesstransformers-8.2.2.jar"
-                    + ";lib/net/minecraftforge/bootstrap/2.1.6/bootstrap-2.1.6.jar"
-                    + ";lib/net/minecraftforge/bootstrap/2.1.8/bootstrap-2.1.8.jar"
-                    + ";lib/net/minecraftforge/bootstrap-api/2.1.6/bootstrap-api-2.1.6.jar"
-                    + ";lib/net/minecraftforge/bootstrap-api/2.1.8/bootstrap-api-2.1.8.jar"
-                    + ";lib/net/minecraftforge/coremods/5.2.1/coremods-5.2.1.jar"
-                    + ";lib/net/minecraftforge/coremods/5.2.6/coremods-5.2.6.jar"
-                    + ";lib/net/minecraftforge/eventbus/6.2.27/eventbus-6.2.27.jar"
-                    + ";lib/net/minecraftforge/eventbus/6.2.8/eventbus-6.2.8.jar"
-                    + ";lib/net/minecraftforge/fmlcore/1.21.4-54.0.6/fmlcore-1.21.4-54.0.6.jar"
-                    + ";lib/net/minecraftforge/fmlcore/1.21.4-54.1.0/fmlcore-1.21.4-54.1.0.jar"
-                    + ";lib/net/minecraftforge/fmlearlydisplay/1.21.4-54.0.6/fmlearlydisplay-1.21.4-54.0.6.jar"
-                    + ";lib/net/minecraftforge/fmlearlydisplay/1.21.4-54.1.0/fmlearlydisplay-1.21.4-54.1.0.jar"
-                    + ";lib/net/minecraftforge/fmlloader/1.21.4-54.0.6/fmlloader-1.21.4-54.0.6.jar"
-                    + ";lib/net/minecraftforge/fmlloader/1.21.4-54.1.0/fmlloader-1.21.4-54.1.0.jar"
-                    + ";lib/net/minecraftforge/forge/1.21.4-54.0.6/forge-1.21.4-54.0.6-client.jar"
-                    + ";lib/net/minecraftforge/forge/1.21.4-54.0.6/forge-1.21.4-54.0.6-shim.jar"
-                    + ";lib/net/minecraftforge/forge/1.21.4-54.0.6/forge-1.21.4-54.0.6-universal.jar"
-                    + ";lib/net/minecraftforge/forge/1.21.4-54.1.0/forge-1.21.4-54.1.0-client.jar"
-                    + ";lib/net/minecraftforge/forge/1.21.4-54.1.0/forge-1.21.4-54.1.0-shim.jar"
-                    + ";lib/net/minecraftforge/forge/1.21.4-54.1.0/forge-1.21.4-54.1.0-universal.jar"
-                    + ";lib/net/minecraftforge/forgespi/7.1.5/forgespi-7.1.5.jar"
-                    + ";lib/net/minecraftforge/JarJarFileSystems/0.3.26/JarJarFileSystems-0.3.26.jar"
-                    + ";lib/net/minecraftforge/JarJarMetadata/0.3.26/JarJarMetadata-0.3.26.jar"
-                    + ";lib/net/minecraftforge/JarJarSelector/0.3.26/JarJarSelector-0.3.26.jar"
-                    + ";lib/net/minecraftforge/javafmllanguage/1.21.4-54.0.6/javafmllanguage-1.21.4-54.0.6.jar"
-                    + ";lib/net/minecraftforge/javafmllanguage/1.21.4-54.1.0/javafmllanguage-1.21.4-54.1.0.jar"
-                    + ";lib/net/minecraftforge/lowcodelanguage/1.21.4-54.0.6/lowcodelanguage-1.21.4-54.0.6.jar"
-                    + ";lib/net/minecraftforge/lowcodelanguage/1.21.4-54.1.0/lowcodelanguage-1.21.4-54.1.0.jar"
-                    + ";lib/net/minecraftforge/mclanguage/1.21.4-54.0.6/mclanguage-1.21.4-54.0.6.jar"
-                    + ";lib/net/minecraftforge/mclanguage/1.21.4-54.1.0/mclanguage-1.21.4-54.1.0.jar"
-                    + ";lib/net/minecraftforge/mergetool-api/1.0/mergetool-api-1.0.jar"
-                    + ";lib/net/minecraftforge/modlauncher/10.2.2/modlauncher-10.2.2.jar"
-                    + ";lib/net/minecraftforge/modlauncher/10.2.4/modlauncher-10.2.4.jar"
-                    + ";lib/net/minecraftforge/securemodules/2.2.20/securemodules-2.2.20.jar"
-                    + ";lib/net/minecraftforge/securemodules/2.2.21/securemodules-2.2.21.jar"
-                    + ";lib/net/minecraftforge/unsafe/0.9.2/unsafe-0.9.2.jar"
-                    + ";lib/net/minecrell/terminalconsoleappender/1.2.0/terminalconsoleappender-1.2.0.jar"
-                    + ";lib/net/minidev/accessors-smart/2.5.1/accessors-smart-2.5.1.jar"
-                    + ";lib/net/minidev/json-smart/2.5.1/json-smart-2.5.1.jar"
-                    + ";lib/net/sf/jopt-simple/jopt-simple/5.0.4/jopt-simple-5.0.4.jar"
-                    + ";lib/optifine/OptiFine/1.21.4_HD_U_J3_pre5/OptiFine-1.21.4_HD_U_J3_pre5.jar"
-                    + ";lib/org/apache/commons/commons-compress/1.27.1/commons-compress-1.27.1.jar"
-                    + ";lib/org/apache/commons/commons-lang3/3.17.0/commons-lang3-3.17.0.jar"
-                    + ";lib/org/apache/httpcomponents/httpclient/4.5.14/httpclient-4.5.14.jar"
-                    + ";lib/org/apache/httpcomponents/httpcore/4.4.16/httpcore-4.4.16.jar"
-                    + ";lib/org/apache/logging/log4j/log4j-api/2.24.1/log4j-api-2.24.1.jar"
-                    + ";lib/org/apache/logging/log4j/log4j-core/2.24.1/log4j-core-2.24.1.jar"
-                    + ";lib/org/apache/logging/log4j/log4j-slf4j2-impl/2.24.1/log4j-slf4j2-impl-2.24.1.jar"
-                    + ";lib/org/apache/maven/maven-artifact/3.8.5/maven-artifact-3.8.5.jar"
-                    + ";lib/org/apache/maven/maven-artifact/3.8.8/maven-artifact-3.8.8.jar"
-                    + ";lib/org/jcraft/jorbis/0.0.17/jorbis-0.0.17.jar"
-                    + ";lib/org/jline/jline-reader/3.12.1/jline-reader-3.12.1.jar"
-                    + ";lib/org/jline/jline-reader/3.25.1/jline-reader-3.25.1.jar"
-                    + ";lib/org/jline/jline-terminal/3.12.1/jline-terminal-3.12.1.jar"
-                    + ";lib/org/jline/jline-terminal/3.25.1/jline-terminal-3.25.1.jar"
-                    + ";lib/org/jline/jline-terminal-jna/3.12.1/jline-terminal-jna-3.12.1.jar"
-                    + ";lib/org/jline/jline-terminal-jna/3.25.1/jline-terminal-jna-3.25.1.jar"
-                    + ";lib/org/joml/joml/1.10.8/joml-1.10.8.jar"
-                    + ";lib/org/lwjgl/lwjgl/3.3.3/lwjgl-3.3.3.jar"
-                    + ";lib/org/lwjgl/lwjgl/3.3.3/lwjgl-3.3.3-natives-windows.jar"
-                    + ";lib/org/lwjgl/lwjgl/3.3.3/lwjgl-3.3.3-natives-windows-arm64.jar"
-                    + ";lib/org/lwjgl/lwjgl/3.3.3/lwjgl-3.3.3-natives-windows-x86.jar"
-                    + ";lib/org/lwjgl/lwjgl-freetype/3.3.3/lwjgl-freetype-3.3.3.jar"
-                    + ";lib/org/lwjgl/lwjgl-freetype/3.3.3/lwjgl-freetype-3.3.3-natives-windows.jar"
-                    + ";lib/org/lwjgl/lwjgl-freetype/3.3.3/lwjgl-freetype-3.3.3-natives-windows-arm64.jar"
-                    + ";lib/org/lwjgl/lwjgl-freetype/3.3.3/lwjgl-freetype-3.3.3-natives-windows-x86.jar"
-                    + ";lib/org/lwjgl/lwjgl-glfw/3.3.3/lwjgl-glfw-3.3.3.jar"
-                    + ";lib/org/lwjgl/lwjgl-glfw/3.3.3/lwjgl-glfw-3.3.3-natives-windows.jar"
-                    + ";lib/org/lwjgl/lwjgl-glfw/3.3.3/lwjgl-glfw-3.3.3-natives-windows-arm64.jar"
-                    + ";lib/org/lwjgl/lwjgl-glfw/3.3.3/lwjgl-glfw-3.3.3-natives-windows-x86.jar"
-                    + ";lib/org/lwjgl/lwjgl-jemalloc/3.3.3/lwjgl-jemalloc-3.3.3.jar"
-                    + ";lib/org/lwjgl/lwjgl-jemalloc/3.3.3/lwjgl-jemalloc-3.3.3-natives-windows.jar"
-                    + ";lib/org/lwjgl/lwjgl-jemalloc/3.3.3/lwjgl-jemalloc-3.3.3-natives-windows-arm64.jar"
-                    + ";lib/org/lwjgl/lwjgl-jemalloc/3.3.3/lwjgl-jemalloc-3.3.3-natives-windows-x86.jar"
-                    + ";lib/org/lwjgl/lwjgl-openal/3.3.3/lwjgl-openal-3.3.3.jar"
-                    + ";lib/org/lwjgl/lwjgl-openal/3.3.3/lwjgl-openal-3.3.3-natives-windows.jar"
-                    + ";lib/org/lwjgl/lwjgl-openal/3.3.3/lwjgl-openal-3.3.3-natives-windows-arm64.jar"
-                    + ";lib/org/lwjgl/lwjgl-openal/3.3.3/lwjgl-openal-3.3.3-natives-windows-x86.jar"
-                    + ";lib/org/lwjgl/lwjgl-opengl/3.3.3/lwjgl-opengl-3.3.3.jar"
-                    + ";lib/org/lwjgl/lwjgl-opengl/3.3.3/lwjgl-opengl-3.3.3-natives-windows.jar"
-                    + ";lib/org/lwjgl/lwjgl-opengl/3.3.3/lwjgl-opengl-3.3.3-natives-windows-arm64.jar"
-                    + ";lib/org/lwjgl/lwjgl-opengl/3.3.3/lwjgl-opengl-3.3.3-natives-windows-x86.jar"
-                    + ";lib/org/lwjgl/lwjgl-stb/3.3.3/lwjgl-stb-3.3.3.jar"
-                    + ";lib/org/lwjgl/lwjgl-stb/3.3.3/lwjgl-stb-3.3.3-natives-windows.jar"
-                    + ";lib/org/lwjgl/lwjgl-stb/3.3.3/lwjgl-stb-3.3.3-natives-windows-arm64.jar"
-                    + ";lib/org/lwjgl/lwjgl-stb/3.3.3/lwjgl-stb-3.3.3-natives-windows-x86.jar"
-                    + ";lib/org/lwjgl/lwjgl-tinyfd/3.3.3/lwjgl-tinyfd-3.3.3.jar"
-                    + ";lib/org/lwjgl/lwjgl-tinyfd/3.3.3/lwjgl-tinyfd-3.3.3-natives-windows.jar"
-                    + ";lib/org/lwjgl/lwjgl-tinyfd/3.3.3/lwjgl-tinyfd-3.3.3-natives-windows-arm64.jar"
-                    + ";lib/org/lwjgl/lwjgl-tinyfd/3.3.3/lwjgl-tinyfd-3.3.3-natives-windows-x86.jar"
-                    + ";lib/org/lz4/lz4-java/1.8.0/lz4-java-1.8.0.jar"
-                    + ";lib/org/openjdk/nashorn/nashorn-core/15.4/nashorn-core-15.4.jar"
-                    + ";lib/org/ow2/asm/asm/9.7.1/asm-9.7.1.jar"
-                    + ";lib/org/ow2/asm/asm-analysis/9.7.1/asm-analysis-9.7.1.jar"
-                    + ";lib/org/ow2/asm/asm-commons/9.7.1/asm-commons-9.7.1.jar"
-                    + ";lib/org/ow2/asm/asm-tree/9.7.1/asm-tree-9.7.1.jar"
-                    + ";lib/org/ow2/asm/asm-util/9.7.1/asm-util-9.7.1.jar"
-                    + ";lib/org/slf4j/slf4j-api/2.0.16/slf4j-api-2.0.16.jar"
-                    // + ";lib/org/spongepowered/mixin/0.8.7/mixin-0.8.7.jar"
-                    + ";lib/v1/objects/a7e5a6024bfd3cd614625aa05629adf760020304/client.jar";
+            + ";lib/ll/night-config/toml/3.7.4/toml-3.7.4.jar"
+            + ";lib/com/fasterxml/jackson/core/jackson-annotations/2.13.4/jackson-annotations-2.13.4.jar"
+            + ";lib/com/fasterxml/jackson/core/jackson-core/2.13.4/jackson-core-2.13.4.jar"
+            + ";lib/com/fasterxml/jackson/core/jackson-databind/2.13.4.2/jackson-databind-2.13.4.2.jar"
+            + ";lib/com/github/oshi/oshi-core/6.6.5/oshi-core-6.6.5.jar"
+            + ";lib/com/github/stephenc/jcip/jcip-annotations/1.0-1/jcip-annotations-1.0-1.jar"
+            + ";lib/com/google/code/gson/gson/2.11.0/gson-2.11.0.jar"
+            + ";lib/com/google/guava/failureaccess/1.0.1/failureaccess-1.0.1.jar"
+            + ";lib/com/google/guava/failureaccess/1.0.2/failureaccess-1.0.2.jar"
+            + ";lib/com/google/guava/guava/32.1.2-jre/guava-32.1.2-jre.jar"
+            + ";lib/com/google/guava/guava/33.3.1-jre/guava-33.3.1-jre.jar"
+            + ";lib/com/ibm/icu/icu4j/76.1/icu4j-76.1.jar"
+            + ";lib/com/microsoft/azure/msal4j/1.17.2/msal4j-1.17.2.jar"
+            + ";lib/com/mojang/authlib/6.0.57/authlib-6.0.57.jar"
+            + ";lib/com/mojang/blocklist/1.0.10/blocklist-1.0.10.jar"
+            + ";lib/com/mojang/brigadier/1.3.10/brigadier-1.3.10.jar"
+            + ";lib/com/mojang/datafixerupper/8.0.16/datafixerupper-8.0.16.jar"
+            + ";lib/com/mojang/jtracy/1.0.29/jtracy-1.0.29-natives-windows.jar"
+            + ";lib/com/mojang/jtracy/1.0.29/jtracy-1.0.29.jar"
+            + ";lib/com/mojang/logging/1.5.10/logging-1.5.10.jar"
+            + ";lib/com/mojang/patchy/2.2.10/patchy-2.2.10.jar"
+            + ";lib/com/mojang/text2speech/1.17.9/text2speech-1.17.9.jar"
+            + ";lib/com/nimbusds/content-type/2.3/content-type-2.3.jar"
+            + ";lib/com/nimbusds/lang-tag/1.7/lang-tag-1.7.jar"
+            + ";lib/com/nimbusds/nimbus-jose-jwt/9.40/nimbus-jose-jwt-9.40.jar"
+            + ";lib/com/nimbusds/oauth2-oidc-sdk/11.18/oauth2-oidc-sdk-11.18.jar"
+            + ";lib/commons-codec/commons-codec/1.17.1/commons-codec-1.17.1.jar"
+            + ";lib/commons-io/commons-io/2.17.0/commons-io-2.17.0.jar"
+            + ";lib/commons-logging/commons-logging/1.3.4/commons-logging-1.3.4.jar"
+            + ";lib/de/oceanlabs/mcp/mcp_config/1.21.4-20241203.143248/mcp_config-1.21.4-20241203.143248-srg2off.jar"
+            + ";lib/io/netty/netty-buffer/4.1.115.Final/netty-buffer-4.1.115.Final.jar"
+            + ";lib/io/netty/netty-codec/4.1.115.Final/netty-codec-4.1.115.Final.jar"
+            + ";lib/io/netty/netty-common/4.1.115.Final/netty-common-4.1.115.Final.jar"
+            + ";lib/io/netty/netty-handler/4.1.115.Final/netty-handler-4.1.115.Final.jar"
+            + ";lib/io/netty/netty-resolver/4.1.115.Final/netty-resolver-4.1.115.Final.jar"
+            + ";lib/io/netty/netty-transport/4.1.115.Final/netty-transport-4.1.115.Final.jar"
+            + ";lib/io/netty/netty-transport-classes-epoll/4.1.115.Final/netty-transport-classes-epoll-4.1.115.Final.jar"
+            + ";lib/io/netty/netty-transport-native-unix-common/4.1.115.Final/netty-transport-native-unix-common-4.1.115.Final.jar"
+            + ";lib/it/unimi/dsi/fastutil/8.5.15/fastutil-8.5.15.jar"
+            + ";lib/net/fabricmc/fabric-loader/0.16.10/fabric-loader-0.16.10.jar"
+            + ";lib/net/fabricmc/intermediary/1.21.4/intermediary-1.21.4.jar"
+            + ";lib/net/fabricmc/sponge-mixin/0.15.4+mixin.0.8.7/sponge-mixin-0.15.4+mixin.0.8.7.jar"
+            + ";lib/net/java/dev/jna/jna/5.15.0/jna-5.15.0.jar"
+            + ";lib/net/java/dev/jna/jna-platform/5.15.0/jna-platform-5.15.0.jar"
+            + ";lib/net/jodah/typetools/0.6.3/typetools-0.6.3.jar"
+            + ";lib/net/minecraft/client/1.21.4/client-1.21.4-official.jar"
+            + ";lib/net/minecraftforge/accesstransformers/8.2.0/accesstransformers-8.2.0.jar"
+            + ";lib/net/minecraftforge/accesstransformers/8.2.2/accesstransformers-8.2.2.jar"
+            + ";lib/net/minecraftforge/bootstrap/2.1.6/bootstrap-2.1.6.jar"
+            + ";lib/net/minecraftforge/bootstrap/2.1.8/bootstrap-2.1.8.jar"
+            + ";lib/net/minecraftforge/bootstrap-api/2.1.6/bootstrap-api-2.1.6.jar"
+            + ";lib/net/minecraftforge/bootstrap-api/2.1.8/bootstrap-api-2.1.8.jar"
+            + ";lib/net/minecraftforge/coremods/5.2.1/coremods-5.2.1.jar"
+            + ";lib/net/minecraftforge/coremods/5.2.6/coremods-5.2.6.jar"
+            + ";lib/net/minecraftforge/eventbus/6.2.27/eventbus-6.2.27.jar"
+            + ";lib/net/minecraftforge/eventbus/6.2.8/eventbus-6.2.8.jar"
+            + ";lib/net/minecraftforge/fmlcore/1.21.4-54.0.6/fmlcore-1.21.4-54.0.6.jar"
+            + ";lib/net/minecraftforge/fmlcore/1.21.4-54.1.0/fmlcore-1.21.4-54.1.0.jar"
+            + ";lib/net/minecraftforge/fmlearlydisplay/1.21.4-54.0.6/fmlearlydisplay-1.21.4-54.0.6.jar"
+            + ";lib/net/minecraftforge/fmlearlydisplay/1.21.4-54.1.0/fmlearlydisplay-1.21.4-54.1.0.jar"
+            + ";lib/net/minecraftforge/fmlloader/1.21.4-54.0.6/fmlloader-1.21.4-54.0.6.jar"
+            + ";lib/net/minecraftforge/fmlloader/1.21.4-54.1.0/fmlloader-1.21.4-54.1.0.jar"
+            + ";lib/net/minecraftforge/forge/1.21.4-54.0.6/forge-1.21.4-54.0.6-client.jar"
+            + ";lib/net/minecraftforge/forge/1.21.4-54.0.6/forge-1.21.4-54.0.6-shim.jar"
+            + ";lib/net/minecraftforge/forge/1.21.4-54.0.6/forge-1.21.4-54.0.6-universal.jar"
+            + ";lib/net/minecraftforge/forge/1.21.4-54.1.0/forge-1.21.4-54.1.0-client.jar"
+            + ";lib/net/minecraftforge/forge/1.21.4-54.1.0/forge-1.21.4-54.1.0-shim.jar"
+            + ";lib/net/minecraftforge/forge/1.21.4-54.1.0/forge-1.21.4-54.1.0-universal.jar"
+            + ";lib/net/minecraftforge/forgespi/7.1.5/forgespi-7.1.5.jar"
+            + ";lib/net/minecraftforge/JarJarFileSystems/0.3.26/JarJarFileSystems-0.3.26.jar"
+            + ";lib/net/minecraftforge/JarJarMetadata/0.3.26/JarJarMetadata-0.3.26.jar"
+            + ";lib/net/minecraftforge/JarJarSelector/0.3.26/JarJarSelector-0.3.26.jar"
+            + ";lib/net/minecraftforge/javafmllanguage/1.21.4-54.0.6/javafmllanguage-1.21.4-54.0.6.jar"
+            + ";lib/net/minecraftforge/javafmllanguage/1.21.4-54.1.0/javafmllanguage-1.21.4-54.1.0.jar"
+            + ";lib/net/minecraftforge/lowcodelanguage/1.21.4-54.0.6/lowcodelanguage-1.21.4-54.0.6.jar"
+            + ";lib/net/minecraftforge/lowcodelanguage/1.21.4-54.1.0/lowcodelanguage-1.21.4-54.1.0.jar"
+            + ";lib/net/minecraftforge/mclanguage/1.21.4-54.0.6/mclanguage-1.21.4-54.0.6.jar"
+            + ";lib/net/minecraftforge/mclanguage/1.21.4-54.1.0/mclanguage-1.21.4-54.1.0.jar"
+            + ";lib/net/minecraftforge/mergetool-api/1.0/mergetool-api-1.0.jar"
+            + ";lib/net/minecraftforge/modlauncher/10.2.2/modlauncher-10.2.2.jar"
+            + ";lib/net/minecraftforge/modlauncher/10.2.4/modlauncher-10.2.4.jar"
+            + ";lib/net/minecraftforge/securemodules/2.2.20/securemodules-2.2.20.jar"
+            + ";lib/net/minecraftforge/securemodules/2.2.21/securemodules-2.2.21.jar"
+            + ";lib/net/minecraftforge/unsafe/0.9.2/unsafe-0.9.2.jar"
+            + ";lib/net/minecrell/terminalconsoleappender/1.2.0/terminalconsoleappender-1.2.0.jar"
+            + ";lib/net/minidev/accessors-smart/2.5.1/accessors-smart-2.5.1.jar"
+            + ";lib/net/minidev/json-smart/2.5.1/json-smart-2.5.1.jar"
+            + ";lib/net/sf/jopt-simple/jopt-simple/5.0.4/jopt-simple-5.0.4.jar"
+            + ";lib/optifine/OptiFine/1.21.4_HD_U_J3_pre5/OptiFine-1.21.4_HD_U_J3_pre5.jar"
+            + ";lib/org/apache/commons/commons-compress/1.27.1/commons-compress-1.27.1.jar"
+            + ";lib/org/apache/commons/commons-lang3/3.17.0/commons-lang3-3.17.0.jar"
+            + ";lib/org/apache/httpcomponents/httpclient/4.5.14/httpclient-4.5.14.jar"
+            + ";lib/org/apache/httpcomponents/httpcore/4.4.16/httpcore-4.4.16.jar"
+            + ";lib/org/apache/logging/log4j/log4j-api/2.24.1/log4j-api-2.24.1.jar"
+            + ";lib/org/apache/logging/log4j/log4j-core/2.24.1/log4j-core-2.24.1.jar"
+            + ";lib/org/apache/logging/log4j/log4j-slf4j2-impl/2.24.1/log4j-slf4j2-impl-2.24.1.jar"
+            + ";lib/org/apache/maven/maven-artifact/3.8.5/maven-artifact-3.8.5.jar"
+            + ";lib/org/apache/maven/maven-artifact/3.8.8/maven-artifact-3.8.8.jar"
+            + ";lib/org/jcraft/jorbis/0.0.17/jorbis-0.0.17.jar"
+            + ";lib/org/jline/jline-reader/3.12.1/jline-reader-3.12.1.jar"
+            + ";lib/org/jline/jline-reader/3.25.1/jline-reader-3.25.1.jar"
+            + ";lib/org/jline/jline-terminal/3.12.1/jline-terminal-3.12.1.jar"
+            + ";lib/org/jline/jline-terminal/3.25.1/jline-terminal-3.25.1.jar"
+            + ";lib/org/jline/jline-terminal-jna/3.12.1/jline-terminal-jna-3.12.1.jar"
+            + ";lib/org/jline/jline-terminal-jna/3.25.1/jline-terminal-jna-3.25.1.jar"
+            + ";lib/org/joml/joml/1.10.8/joml-1.10.8.jar"
+            + ";lib/org/lwjgl/lwjgl/3.3.3/lwjgl-3.3.3.jar"
+            + ";lib/org/lwjgl/lwjgl/3.3.3/lwjgl-3.3.3-natives-windows.jar"
+            + ";lib/org/lwjgl/lwjgl/3.3.3/lwjgl-3.3.3-natives-windows-arm64.jar"
+            + ";lib/org/lwjgl/lwjgl/3.3.3/lwjgl-3.3.3-natives-windows-x86.jar"
+            + ";lib/org/lwjgl/lwjgl-freetype/3.3.3/lwjgl-freetype-3.3.3.jar"
+            + ";lib/org/lwjgl/lwjgl-freetype/3.3.3/lwjgl-freetype-3.3.3-natives-windows.jar"
+            + ";lib/org/lwjgl/lwjgl-freetype/3.3.3/lwjgl-freetype-3.3.3-natives-windows-arm64.jar"
+            + ";lib/org/lwjgl/lwjgl-freetype/3.3.3/lwjgl-freetype-3.3.3-natives-windows-x86.jar"
+            + ";lib/org/lwjgl/lwjgl-glfw/3.3.3/lwjgl-glfw-3.3.3.jar"
+            + ";lib/org/lwjgl/lwjgl-glfw/3.3.3/lwjgl-glfw-3.3.3-natives-windows.jar"
+            + ";lib/org/lwjgl/lwjgl-glfw/3.3.3/lwjgl-glfw-3.3.3-natives-windows-arm64.jar"
+            + ";lib/org/lwjgl/lwjgl-glfw/3.3.3/lwjgl-glfw-3.3.3-natives-windows-x86.jar"
+            + ";lib/org/lwjgl/lwjgl-jemalloc/3.3.3/lwjgl-jemalloc-3.3.3.jar"
+            + ";lib/org/lwjgl/lwjgl-jemalloc/3.3.3/lwjgl-jemalloc-3.3.3-natives-windows.jar"
+            + ";lib/org/lwjgl/lwjgl-jemalloc/3.3.3/lwjgl-jemalloc-3.3.3-natives-windows-arm64.jar"
+            + ";lib/org/lwjgl/lwjgl-jemalloc/3.3.3/lwjgl-jemalloc-3.3.3-natives-windows-x86.jar"
+            + ";lib/org/lwjgl/lwjgl-openal/3.3.3/lwjgl-openal-3.3.3.jar"
+            + ";lib/org/lwjgl/lwjgl-openal/3.3.3/lwjgl-openal-3.3.3-natives-windows.jar"
+            + ";lib/org/lwjgl/lwjgl-openal/3.3.3/lwjgl-openal-3.3.3-natives-windows-arm64.jar"
+            + ";lib/org/lwjgl/lwjgl-openal/3.3.3/lwjgl-openal-3.3.3-natives-windows-x86.jar"
+            + ";lib/org/lwjgl/lwjgl-opengl/3.3.3/lwjgl-opengl-3.3.3.jar"
+            + ";lib/org/lwjgl/lwjgl-opengl/3.3.3/lwjgl-opengl-3.3.3-natives-windows.jar"
+            + ";lib/org/lwjgl/lwjgl-opengl/3.3.3/lwjgl-opengl-3.3.3-natives-windows-arm64.jar"
+            + ";lib/org/lwjgl/lwjgl-opengl/3.3.3/lwjgl-opengl-3.3.3-natives-windows-x86.jar"
+            + ";lib/org/lwjgl/lwjgl-stb/3.3.3/lwjgl-stb-3.3.3.jar"
+            + ";lib/org/lwjgl/lwjgl-stb/3.3.3/lwjgl-stb-3.3.3-natives-windows.jar"
+            + ";lib/org/lwjgl/lwjgl-stb/3.3.3/lwjgl-stb-3.3.3-natives-windows-arm64.jar"
+            + ";lib/org/lwjgl/lwjgl-stb/3.3.3/lwjgl-stb-3.3.3-natives-windows-x86.jar"
+            + ";lib/org/lwjgl/lwjgl-tinyfd/3.3.3/lwjgl-tinyfd-3.3.3.jar"
+            + ";lib/org/lwjgl/lwjgl-tinyfd/3.3.3/lwjgl-tinyfd-3.3.3-natives-windows.jar"
+            + ";lib/org/lwjgl/lwjgl-tinyfd/3.3.3/lwjgl-tinyfd-3.3.3-natives-windows-arm64.jar"
+            + ";lib/org/lwjgl/lwjgl-tinyfd/3.3.3/lwjgl-tinyfd-3.3.3-natives-windows-x86.jar"
+            + ";lib/org/lz4/lz4-java/1.8.0/lz4-java-1.8.0.jar"
+            + ";lib/org/openjdk/nashorn/nashorn-core/15.4/nashorn-core-15.4.jar"
+            + ";lib/org/ow2/asm/asm/9.7.1/asm-9.7.1.jar"
+            + ";lib/org/ow2/asm/asm-analysis/9.7.1/asm-analysis-9.7.1.jar"
+            + ";lib/org/ow2/asm/asm-commons/9.7.1/asm-commons-9.7.1.jar"
+            + ";lib/org/ow2/asm/asm-tree/9.7.1/asm-tree-9.7.1.jar"
+            + ";lib/org/ow2/asm/asm-util/9.7.1/asm-util-9.7.1.jar"
+            + ";lib/org/slf4j/slf4j-api/2.0.16/slf4j-api-2.0.16.jar"
+            // + ";lib/org/spongepowered/mixin/0.8.7/mixin-0.8.7.jar"
+            + ";lib/v1/objects/a7e5a6024bfd3cd614625aa05629adf760020304/client.jar";
 
             String finalClasspath;
             String mainClass;
             ProcessBuilder pb;
             if (selectedServer.fabric_version != null && !selectedServer.fabric_version.trim().isEmpty()) {
                 finalClasspath = baseClasspath
-                        + ";lib/net/fabricmc/fabric-loader/" + selectedServer.fabric_version + "/fabric-loader-"
-                        + selectedServer.fabric_version + ".jar"
+                        + ";lib/net/fabricmc/fabric-loader/" + selectedServer.fabric_version + "/fabric-loader-" + selectedServer.fabric_version + ".jar"
                         + ";lib/net/fabricmc/intermediary/1.21.4/intermediary-1.21.4.jar"
                         + ";lib/net/fabricmc/sponge-mixin/0.15.4+mixin.0.8.7/sponge-mixin-0.15.4+mixin.0.8.7.jar";
                 mainClass = "net.fabricmc.loader.impl.launch.knot.KnotClient";
@@ -986,15 +989,13 @@ public class LauncherUI extends JFrame {
                         "--userType", "mojang",
                         "--versionType", "release",
                         "--version", selectedServer.minecraft_version,
-                        "--gameDir",
-                        getInstallDirForServer((String) serverComboBox.getSelectedItem()).getAbsolutePath(),
+                        "--gameDir", getInstallDirForServer((String) serverComboBox.getSelectedItem()).getAbsolutePath(),
                         "--assetsDir", new File("assets").getAbsolutePath(),
                         "--assetIndex", "19",
                         "--username", nicknameField.getText().trim());
             } else if (selectedServer.forge_version != null && !selectedServer.forge_version.trim().isEmpty()) {
                 finalClasspath = baseClasspath
-                        + ";lib/net/minecraftforge/forge/" + selectedServer.forge_version + "/forge-"
-                        + selectedServer.forge_version + "-client.jar";
+                        + ";lib/net/minecraftforge/forge/" + selectedServer.forge_version + "/forge-" + selectedServer.forge_version + "-client.jar";
                 mainClass = "net.minecraft.client.main.Main";
                 pb = new ProcessBuilder(
                         "java",
@@ -1007,8 +1008,7 @@ public class LauncherUI extends JFrame {
                         "--clientId", "dummy-clientid",
                         "--xuid", "dummy-xuid",
                         "--version", selectedServer.minecraft_version,
-                        "--gameDir",
-                        getInstallDirForServer((String) serverComboBox.getSelectedItem()).getAbsolutePath(),
+                        "--gameDir", getInstallDirForServer((String) serverComboBox.getSelectedItem()).getAbsolutePath(),
                         "--assetsDir", new File("assets").getAbsolutePath(),
                         "--assetIndex", "19",
                         "--username", nicknameField.getText().trim());
@@ -1070,19 +1070,16 @@ public class LauncherUI extends JFrame {
         });
     }
 
-    // Фильтр для ввода цифр в поле RAM
+    // Фильтр для ввода только цифр в поле RAM
     private class DigitFilter extends DocumentFilter {
         @Override
-        public void insertString(FilterBypass fb, int offset, String string, AttributeSet attr)
-                throws BadLocationException {
+        public void insertString(FilterBypass fb, int offset, String string, AttributeSet attr) throws BadLocationException {
             if (string.matches("\\d+")) {
                 super.insertString(fb, offset, string, attr);
             }
         }
-
         @Override
-        public void replace(FilterBypass fb, int offset, int length, String text, AttributeSet attrs)
-                throws BadLocationException {
+        public void replace(FilterBypass fb, int offset, int length, String text, AttributeSet attrs) throws BadLocationException {
             if (text.matches("\\d+")) {
                 super.replace(fb, offset, length, text, attrs);
             }
