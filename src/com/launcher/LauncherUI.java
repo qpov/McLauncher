@@ -23,8 +23,11 @@ import java.util.zip.ZipInputStream;
 
 public class LauncherUI extends JFrame {
 
-    private static final String SETTINGS_FILE = "settings.txt";
+    private static final String SETTINGS_FILE_NAME = "settings.txt";
     private Properties settings = new Properties();
+
+    // Флаг, указывающий, что происходит начальная инициализация comboBox
+    private boolean initializing = false;
 
     private JTextField nicknameField;
     private JTextField ramField;
@@ -54,31 +57,32 @@ public class LauncherUI extends JFrame {
     }
 
     private void loadSettings() {
-        File file = new File(SETTINGS_FILE);
+        File file = new File(SETTINGS_FILE_NAME);
         if (file.exists()) {
             try (FileInputStream fis = new FileInputStream(file)) {
                 settings.load(fis);
+                System.out.println("Настройки загружены из " + file.getAbsolutePath());
             } catch (IOException e) {
                 e.printStackTrace();
             }
-        }
-        if (!settings.containsKey("nickname")) {
+        } else {
+            // Если файла нет, задаем значения по умолчанию и сохраняем их
             settings.setProperty("nickname", "Player");
-        }
-        if (!settings.containsKey("theme")) {
             settings.setProperty("theme", "dark");
-        }
-        if (!settings.containsKey("ram")) {
             settings.setProperty("ram", "2");
-        }
-        if (!settings.containsKey("hideLauncher")) {
             settings.setProperty("hideLauncher", "true");
+            settings.setProperty("lastVersion", "");
+            saveSettings();
+            System.out.println("Настройки по умолчанию сохранены в " + file.getAbsolutePath());
         }
     }
 
     private void saveSettings() {
-        try (FileOutputStream fos = new FileOutputStream(SETTINGS_FILE)) {
+        File file = new File(SETTINGS_FILE_NAME);
+        try (FileOutputStream fos = new FileOutputStream(file)) {
             settings.store(fos, "Launcher Settings");
+            fos.flush();
+            System.out.println("Настройки сохранены в " + file.getAbsolutePath());
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -105,11 +109,29 @@ public class LauncherUI extends JFrame {
                                 "Ошибка загрузки серверов.", "Error", JOptionPane.ERROR_MESSAGE);
                         serverConfigs = new ArrayList<>();
                     }
+                    initializing = true; // начинаем инициализацию
                     serverComboBox.removeAllItems();
                     for (ServerConfig sc : serverConfigs) {
                         serverComboBox.addItem(sc.name);
                     }
+                    // Если в настройках сохранена последняя выбранная версия, устанавливаем её
+                    String lastVersion = settings.getProperty("lastVersion", "");
+                    boolean found = false;
+                    if (!lastVersion.isEmpty()) {
+                        for (int i = 0; i < serverComboBox.getItemCount(); i++) {
+                            if (serverComboBox.getItemAt(i).equals(lastVersion)) {
+                                serverComboBox.setSelectedIndex(i);
+                                found = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (!found && serverComboBox.getItemCount() > 0) {
+                        serverComboBox.setSelectedIndex(0);
+                    }
+                    initializing = false; // окончание инициализации
                     updateLaunchButton();
+                    updateModPanel();
                 } catch (Exception ex) {
                     ex.printStackTrace();
                 }
@@ -140,11 +162,34 @@ public class LauncherUI extends JFrame {
     private void initUI() {
         applyTheme(settings.getProperty("theme"));
 
+        // Никнейм с сохранением изменений при потере фокуса
         nicknameField = new JTextField(settings.getProperty("nickname"), 15);
+        nicknameField.addFocusListener(new FocusAdapter() {
+            @Override
+            public void focusLost(FocusEvent e) {
+                settings.setProperty("nickname", nicknameField.getText().trim());
+                saveSettings();
+            }
+        });
+
+        // RAM с сохранением изменений при потере фокуса
         ramField = new JTextField(settings.getProperty("ram"), 5);
         ((AbstractDocument) ramField.getDocument()).setDocumentFilter(new DigitFilter());
+        ramField.addFocusListener(new FocusAdapter() {
+            @Override
+            public void focusLost(FocusEvent e) {
+                settings.setProperty("ram", ramField.getText().trim());
+                saveSettings();
+            }
+        });
+
+        // Чекбокс для скрытия лаунчера с сохранением изменений
         hideLauncherCheckBox = new JCheckBox("Скрывать лаунчер при запуске игры",
                 Boolean.parseBoolean(settings.getProperty("hideLauncher")));
+        hideLauncherCheckBox.addActionListener(e -> {
+            settings.setProperty("hideLauncher", Boolean.toString(hideLauncherCheckBox.isSelected()));
+            saveSettings();
+        });
 
         JPanel panel = new JPanel(new BorderLayout(10, 10));
 
@@ -154,20 +199,48 @@ public class LauncherUI extends JFrame {
         topPanel.add(nicknameField);
         topPanel.add(new JLabel("Версия:"));
         serverComboBox = new JComboBox<>();
-        serverComboBox.addActionListener(e -> updateLaunchButton());
+        serverComboBox.addActionListener(e -> {
+            updateLaunchButton();
+            updateModPanel();
+            // Если не инициализируем, сохраняем выбранную версию
+            if (!initializing) {
+                String selected = (String) serverComboBox.getSelectedItem();
+                if (selected != null) {
+                    settings.setProperty("lastVersion", selected);
+                    saveSettings();
+                }
+            }
+        });
         topPanel.add(serverComboBox);
         topPanel.add(new JLabel("Макс. ОЗУ (ГБ):"));
         topPanel.add(ramField);
         topPanel.add(hideLauncherCheckBox);
         panel.add(topPanel, BorderLayout.NORTH);
 
-        // Панель модов (оставляем без изменений)
+        // Панель модов
         modPanel = new JPanel();
         modPanel.setBorder(BorderFactory.createTitledBorder("Моды"));
         modPanel.setLayout(new BoxLayout(modPanel, BoxLayout.Y_AXIS));
         JPanel modsContainer = new JPanel(new BorderLayout());
         modsContainer.add(new JScrollPane(modPanel), BorderLayout.CENTER);
         toggleModsButton = new JButton("Включить все моды");
+        toggleModsButton.addActionListener(e -> {
+            boolean allSelected = true;
+            for (Component comp : modPanel.getComponents()) {
+                if (comp instanceof JCheckBox) {
+                    if (!((JCheckBox) comp).isSelected()) {
+                        allSelected = false;
+                        break;
+                    }
+                }
+            }
+            boolean newState = !allSelected;
+            for (Component comp : modPanel.getComponents()) {
+                if (comp instanceof JCheckBox) {
+                    ((JCheckBox) comp).setSelected(newState);
+                }
+            }
+        });
         modsContainer.add(toggleModsButton, BorderLayout.SOUTH);
         panel.add(modsContainer, BorderLayout.CENTER);
 
@@ -180,6 +253,7 @@ public class LauncherUI extends JFrame {
                 return;
             File installDir = getInstallDirForServer(serverName);
             if (new File(installDir, "client.jar").exists()) {
+                applyModSelection(getServerConfigByName(serverName));
                 runGame(installDir, getServerConfigByName(serverName), nicknameField.getText().trim());
             } else {
                 launchButton.setEnabled(false);
@@ -273,9 +347,84 @@ public class LauncherUI extends JFrame {
         return null;
     }
 
-    // Задача установки: скачивание архивов и client.jar.
-    // Архивы (ZIP) скачиваются и распаковываются в корневую папку с заменой, за
-    // исключением группы "lib" – она всегда скачивается.
+    // Обновление панели модов: отображаем установленные моды
+    private void updateModPanel() {
+        modPanel.removeAll();
+        String serverName = (String) serverComboBox.getSelectedItem();
+        if (serverName == null) {
+            modPanel.revalidate();
+            modPanel.repaint();
+            return;
+        }
+        File installDir = getInstallDirForServer(serverName);
+        File modsFolder = new File(installDir, "mods");
+        List<String> enabledMods = new ArrayList<>();
+        List<String> disabledMods = new ArrayList<>();
+        if (modsFolder.exists()) {
+            File[] files = modsFolder.listFiles((dir, name) -> name.toLowerCase().endsWith(".jar"));
+            if (files != null) {
+                for (File f : files) {
+                    enabledMods.add(f.getName());
+                }
+            }
+            File disFolder = new File(modsFolder, "disabled");
+            if (disFolder.exists()) {
+                File[] disFiles = disFolder.listFiles((dir, name) -> name.toLowerCase().endsWith(".jar"));
+                if (disFiles != null) {
+                    for (File f : disFiles) {
+                        disabledMods.add(f.getName());
+                    }
+                }
+            }
+        }
+        if (!enabledMods.isEmpty() || !disabledMods.isEmpty()) {
+            for (String modName : enabledMods) {
+                JCheckBox cb = new JCheckBox(modName, true);
+                modPanel.add(cb);
+            }
+            for (String modName : disabledMods) {
+                JCheckBox cb = new JCheckBox(modName, false);
+                modPanel.add(cb);
+            }
+        } else {
+            modPanel.add(new JLabel("Нет установленных модов."));
+        }
+        modPanel.revalidate();
+        modPanel.repaint();
+    }
+
+    // Применение выбранных модов: перемещаем моды в папку disabled, если они
+    // выключены, и обратно, если включены
+    private void applyModSelection(ServerConfig selectedServer) {
+        File installDir = getInstallDirForServer(selectedServer.name);
+        File modsFolder = new File(installDir, "mods");
+        if (!modsFolder.exists()) {
+            modsFolder.mkdirs();
+        }
+        File disabledFolder = new File(modsFolder, "disabled");
+        if (!disabledFolder.exists()) {
+            disabledFolder.mkdirs();
+        }
+        for (Component comp : modPanel.getComponents()) {
+            if (comp instanceof JCheckBox) {
+                JCheckBox cb = (JCheckBox) comp;
+                String modFileName = cb.getText();
+                File modFile = new File(modsFolder, modFileName);
+                File disFile = new File(disabledFolder, modFileName);
+                if (!cb.isSelected()) {
+                    if (modFile.exists()) {
+                        modFile.renameTo(disFile);
+                    }
+                } else {
+                    if (disFile.exists()) {
+                        disFile.renameTo(modFile);
+                    }
+                }
+            }
+        }
+    }
+
+    // Задача установки: скачивание архивов и client.jar с отображением прогресса
     private void installGameWithProgress() {
         JDialog dlg = new JDialog(this, "Установка...", true);
         JProgressBar bar = new JProgressBar(0, 100);
@@ -299,6 +448,7 @@ public class LauncherUI extends JFrame {
                 dlg.dispose();
                 updateLaunchButton();
                 launchButton.setEnabled(true);
+                updateModPanel();
                 System.out.println("Задача установки завершена.");
             }
         };
@@ -513,7 +663,7 @@ public class LauncherUI extends JFrame {
         return f;
     }
 
-    // Запуск игры с пустым baseClasspath (вы сами дополните нужные библиотеки)
+    // Запуск игры с пустым baseClasspath (дополните библиотеки по необходимости)
     private void runGame(File installDir, ServerConfig cfg, String nickname) {
         try {
             launchButton.setEnabled(false);
@@ -524,7 +674,7 @@ public class LauncherUI extends JFrame {
                 return;
             }
             String xmx = "-Xmx" + ramField.getText().trim() + "G";
-            String baseClasspath = clientJar
+            String baseClasspath = clientJar.getAbsolutePath()
                     + ";lib/ll/night-config/toml/3.7.4/toml-3.7.4.jar"
                     + ";lib/com/fasterxml/jackson/core/jackson-annotations/2.13.4/jackson-annotations-2.13.4.jar"
                     + ";lib/com/fasterxml/jackson/core/jackson-core/2.13.4/jackson-core-2.13.4.jar"
@@ -699,7 +849,6 @@ public class LauncherUI extends JFrame {
             pb.directory(new File("."));
             pb.inheritIO();
             Process proc = pb.start();
-            JOptionPane.showMessageDialog(this, "Игра запускается...");
             if (Boolean.parseBoolean(settings.getProperty("hideLauncher"))) {
                 setVisible(false);
             }

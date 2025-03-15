@@ -1,3 +1,3 @@
 getdown.txt = 09ecb090a8f76a03157faaa126c7ff9b
-QmLauncher.jar = c1dc37a467baf152fdba49f1a9dfc034
-digest.txt = 62c0c2b467dae753143230f42a29e513
+QmLauncher.jar = 65a75135380027334e7181ae8ddd8ab5
+digest.txt = 870b95d9f4c94000994a0930db1235e7
