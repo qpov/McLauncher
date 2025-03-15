@@ -11,7 +11,7 @@ public class ConfigLoader {
     public static ServerList loadServerConfigs(String filePath) {
         try {
             Reader reader;
-            if (filePath.startsWith("http")) {
+            if (filePath.startsWith("https://raw.githubusercontent.com/qpov/QmLauncher/refs/heads/main")) {
                 URL url = new URL(filePath);
                 URLConnection conn = url.openConnection();
                 conn.setConnectTimeout(5000);
