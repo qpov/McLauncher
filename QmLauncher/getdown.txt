@@ -6,10 +6,11 @@ ui.name = QmLauncher
 code = QmLauncher.jar
 
 # Каждую библиотеку указываем отдельно:
-code = lib/com/google/code/gson/gson/2.11.0/gson-2.11.0.jar
-code = lib/flatlaf-3.5.4.jar
+# code = lib/com/google/code/gson/gson/2.11.0/gson-2.11.0.jar
+# code = lib/flatlaf-3.5.4.jar
 
 # Если есть ресурсы (не на classpath), пишем их в resources:
+# resources = 
 
 # Главный класс приложения
 class = com.launcher.LauncherUI
