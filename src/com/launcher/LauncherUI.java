@@ -199,13 +199,12 @@ public class LauncherUI extends JFrame {
                     Desktop.getDesktop().open(installDir);
                 } catch (IOException ex) {
                     ex.printStackTrace();
-                    JOptionPane.showMessageDialog(this,
-                            "Невозможно открыть папку: " + ex.getMessage(),
+                    JOptionPane.showMessageDialog(this, "Невозможно открыть папку: " + ex.getMessage(),
                             "Ошибка", JOptionPane.ERROR_MESSAGE);
                 }
             } else {
-                JOptionPane.showMessageDialog(this,
-                        "Игра не установлена.", "Информация", JOptionPane.INFORMATION_MESSAGE);
+                JOptionPane.showMessageDialog(this, "Игра не установлена.",
+                        "Информация", JOptionPane.INFORMATION_MESSAGE);
             }
         });
         buttonsPanel.add(openFolderButton);
@@ -274,11 +273,9 @@ public class LauncherUI extends JFrame {
         return null;
     }
 
-    // При нажатии на "Установить игру" запускается задача, которая:
-    // 1. Скачивает архивные части и распаковывает их в корневую папку (с заменой),
-    // только если соответствующая группа ещё не распакована.
-    // 2. Скачивает client.jar в папку version/[сервер].
-    // Прогресс отображается в процентах.
+    // Задача установки: скачивание архивов и client.jar.
+    // Архивы (ZIP) скачиваются и распаковываются в корневую папку с заменой, за
+    // исключением группы "lib" – она всегда скачивается.
     private void installGameWithProgress() {
         JDialog dlg = new JDialog(this, "Установка...", true);
         JProgressBar bar = new JProgressBar(0, 100);
@@ -359,27 +356,23 @@ public class LauncherUI extends JFrame {
                 List<GHFileInfo> groupFiles = entry.getValue();
                 groupFiles.sort(Comparator.comparing(x -> x.name));
                 System.out.println("Обрабатывается группа: " + prefix + ", частей: " + groupFiles.size());
-
-                // Целевая папка = корень; если она уже существует и не пуста, пропускаем
-                // скачивание группы
-                File destDir = new File(".");
-                if (destDir.exists() && destDir.listFiles() != null && destDir.listFiles().length > 0) {
-                    // Если файлы из этой группы уже присутствуют (проверяем по наличию хотя бы
-                    // одного файла с данным префиксом)
-                    boolean alreadyExtracted = false;
-                    for (File f : destDir.listFiles()) {
+                // Для группы lib всегда скачиваем архив, для остальных – если в корне уже есть
+                // файлы с данным префиксом, пропускаем
+                if (!prefix.equalsIgnoreCase("lib")) {
+                    boolean exists = false;
+                    File root = new File(".");
+                    for (File f : root.listFiles()) {
                         if (f.getName().toLowerCase().startsWith(prefix.toLowerCase())) {
-                            alreadyExtracted = true;
+                            exists = true;
                             break;
                         }
                     }
-                    if (alreadyExtracted) {
+                    if (exists) {
                         System.out.println("Группа " + prefix + " уже извлечена, пропускаем.");
                         doneUnits.addAndGet(groupFiles.size());
                         continue;
                     }
                 }
-
                 File combined = combineParts(prefix, groupFiles, doneUnits, totalUnits);
                 System.out.println("Объединённый архив: " + combined.getAbsolutePath());
                 unzipToRoot(combined);
@@ -481,7 +474,7 @@ public class LauncherUI extends JFrame {
             }
         }
 
-        // Распаковка ZIP-архива в корневую папку (с заменой файлов)
+        // Распаковка ZIP-архива в корневую папку с заменой файлов
         private void unzipToRoot(File zipFile) throws IOException {
             System.out.println("unzip => " + zipFile.getName() + " -> корень");
             File destDir = new File(".");
@@ -509,7 +502,7 @@ public class LauncherUI extends JFrame {
         }
     }
 
-    // Метод для защиты от Zip Slip
+    // Защита от Zip Slip
     private File createNewFile(File destDir, String entryName) throws IOException {
         File f = new File(destDir, entryName);
         String destPath = destDir.getCanonicalPath();
@@ -520,6 +513,7 @@ public class LauncherUI extends JFrame {
         return f;
     }
 
+    // Запуск игры с пустым baseClasspath (вы сами дополните нужные библиотеки)
     private void runGame(File installDir, ServerConfig cfg, String nickname) {
         try {
             launchButton.setEnabled(false);
@@ -530,10 +524,7 @@ public class LauncherUI extends JFrame {
                 return;
             }
             String xmx = "-Xmx" + ramField.getText().trim() + "G";
-            // Формируем classpath, включая client.jar (при необходимости можно добавить и
-            // другие библиотеки)
-            String clientJarPath = clientJar.getAbsolutePath();
-            String baseClasspath = clientJarPath
+            String baseClasspath = clientJar
                     + ";lib/ll/night-config/toml/3.7.4/toml-3.7.4.jar"
                     + ";lib/com/fasterxml/jackson/core/jackson-annotations/2.13.4/jackson-annotations-2.13.4.jar"
                     + ";lib/com/fasterxml/jackson/core/jackson-core/2.13.4/jackson-core-2.13.4.jar"
@@ -707,15 +698,14 @@ public class LauncherUI extends JFrame {
                     "--username", nickname);
             pb.directory(new File("."));
             pb.inheritIO();
-            Process process = pb.start();
-            JOptionPane.showMessageDialog(this,
-                    "Игра запускается через " + (cfg.fabric_version != null ? "Fabric" : "Forge") + "...");
+            Process proc = pb.start();
+            JOptionPane.showMessageDialog(this, "Игра запускается...");
             if (Boolean.parseBoolean(settings.getProperty("hideLauncher"))) {
                 setVisible(false);
             }
             new Thread(() -> {
                 try {
-                    process.waitFor();
+                    proc.waitFor();
                 } catch (InterruptedException ex) {
                     ex.printStackTrace();
                 }
@@ -726,8 +716,8 @@ public class LauncherUI extends JFrame {
             }).start();
         } catch (IOException ex) {
             ex.printStackTrace();
-            JOptionPane.showMessageDialog(this, "Ошибка запуска: " + ex.getMessage(),
-                    "Ошибка", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Ошибка запуска: " + ex.getMessage(), "Ошибка",
+                    JOptionPane.ERROR_MESSAGE);
             launchButton.setEnabled(true);
         }
     }
