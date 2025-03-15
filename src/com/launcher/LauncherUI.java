@@ -35,12 +35,10 @@ public class LauncherUI extends JFrame {
     private JPanel modPanel;
 
     protected List<ServerConfig> serverConfigs;
-    private List<ModConfig> defaultMods; // пока не используется
+    private List<ModConfig> defaultMods; // Пока не используется
 
     public LauncherUI() {
-        // Убедимся, что не работаем в headless-режиме
         System.out.println("Headless mode: " + GraphicsEnvironment.isHeadless());
-        
         setTitle("QmLauncher 1.6.4");
         setSize(960, 540);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
@@ -111,7 +109,6 @@ public class LauncherUI extends JFrame {
                                 "Error", JOptionPane.ERROR_MESSAGE);
                         serverConfigs = new ArrayList<>();
                     }
-                    // Обновляем ComboBox
                     serverComboBox.removeAllItems();
                     for (ServerConfig sc : serverConfigs) {
                         serverComboBox.addItem(sc.name);
@@ -138,7 +135,7 @@ public class LauncherUI extends JFrame {
         ((AbstractDocument) ramField.getDocument()).setDocumentFilter(new DigitFilter());
     }
 
-    // Папка установки игры: version/[имя сервера]
+    // Метод возвращает папку установки игры: client.jar будет помещаться в version/[имя сервера]
     private File getInstallDirForServer(String serverName) {
         File dir = new File("version", serverName);
         if (!dir.exists()) {
@@ -165,7 +162,6 @@ public class LauncherUI extends JFrame {
         topPanel.add(nicknameField);
         topPanel.add(new JLabel("Версия:"));
         serverComboBox = new JComboBox<>();
-        // список серверов заполнится позже, после фоновой загрузки
         serverComboBox.addActionListener(e -> {
             updateLaunchButton();
             updateModPanel();
@@ -240,7 +236,7 @@ public class LauncherUI extends JFrame {
                     return;
                 }
                 applyModSelection(selectedServer);
-                runGame(getInstallDirForServer(selectedServerName), selectedServer, nick);
+                runGame(installDir, selectedServer, nick);
             } else {
                 installGameWithProgress();
             }
@@ -339,7 +335,7 @@ public class LauncherUI extends JFrame {
         return null;
     }
 
-    // Обновление панели модов (если сервер их поддерживает)
+    // Обновление панели модов
     private void updateModPanel() {
         modPanel.removeAll();
         String selectedName = (String) serverComboBox.getSelectedItem();
@@ -545,7 +541,7 @@ public class LauncherUI extends JFrame {
         }
     }
 
-    // Прямое скачивание файла
+    // Метод прямого скачивания файла
     private void downloadFile(String fileURL, File destinationFile) throws IOException {
         URL url = new URL(fileURL);
         try (InputStream inputStream = url.openStream();
@@ -560,8 +556,8 @@ public class LauncherUI extends JFrame {
 
     /*
      * Метод установки игры:
-     * Если download_link заканчивается на ".jar", скачивается client.jar напрямую в папку установки.
-     * Иначе используется механизм скачивания мультичастного архива, распаковки и перемещения client.jar.
+     * Если download_link заканчивается на ".jar", скачивается client.jar напрямую в папку установки (version/[сервер]).
+     * Иначе используется механизм скачивания мультичастного архива, его извлечение происходит в папку с лаунчером.
      */
     private void installGameWithProgress() {
         String selectedServerName = (String) serverComboBox.getSelectedItem();
@@ -573,6 +569,7 @@ public class LauncherUI extends JFrame {
         }
         ServerConfig selectedServer = getServerConfigByName(selectedServerName);
         if (selectedServer != null) {
+            // Если ссылка заканчивается на ".jar", скачиваем напрямую
             if (selectedServer.download_link.toLowerCase().endsWith(".jar")) {
                 File installDir = getInstallDirForServer(selectedServerName);
                 if (!installDir.exists()) {
@@ -619,7 +616,9 @@ public class LauncherUI extends JFrame {
                 });
                 progressDialog.setVisible(true);
             } else {
-                File extractionDir = new File(".");
+                // В противном случае используем механизм скачивания мультичастного архива.
+                // Здесь архив извлекается непосредственно в папку с лаунчером (текущую директорию).
+                File extractionDir = new File("."); 
                 JDialog progressDialog = new JDialog(this, "Загрузка...", true);
                 JProgressBar progressBar = new JProgressBar(0, 100);
                 progressBar.setIndeterminate(true);
@@ -653,19 +652,11 @@ public class LauncherUI extends JFrame {
                         progressDialog.dispose();
                         launchButton.setEnabled(true);
                         if (!worker.isCancelled()) {
-                            File clientSource = new File(extractionDir, "client.jar");
-                            File clientTargetDir = getInstallDirForServer(selectedServerName);
-                            if (!clientTargetDir.exists()) {
-                                clientTargetDir.mkdirs();
-                            }
-                            File clientTarget = new File(clientTargetDir, "client.jar");
-                            try {
-                                Files.move(clientSource.toPath(), clientTarget.toPath(), StandardCopyOption.REPLACE_EXISTING);
-                            } catch (IOException e) {
-                                e.printStackTrace();
-                            }
+                            // Если требуется переместить client.jar из папки с лаунчером в папку установки, 
+                            // то можно добавить код перемещения. Если же архив уже извлечён в папку с лаунчером,
+                            // то оставьте client.jar там.
                             JOptionPane.showMessageDialog(LauncherUI.this,
-                                    "Игра установлена успешно!\nПуть установки: " + clientTargetDir.getAbsolutePath());
+                                    "Игра установлена успешно!\nПапка лаунчера: " + extractionDir.getAbsolutePath());
                             updateLaunchButton();
                         }
                     }
@@ -691,7 +682,8 @@ public class LauncherUI extends JFrame {
 
         @Override
         protected Void doInBackground() throws Exception {
-            File tempDir = new File(System.getProperty("java.io.tmpdir"), "qmlauncher_temp");
+            // Скачиваем архивные части в поддиректорию "temp_download" в папке лаунчера
+            File tempDir = new File(installDir, "temp_download");
             if (!tempDir.exists()) {
                 tempDir.mkdirs();
             }
@@ -716,6 +708,7 @@ public class LauncherUI extends JFrame {
                 setProgress(progressValue);
             }
             if (isCancelled()) return null;
+            // Объединяем части в один архив в папке temp_download
             File combinedZip = new File(tempDir, "combined_game.zip");
             try (FileOutputStream fos = new FileOutputStream(combinedZip)) {
                 for (File partFile : downloadedParts) {
@@ -730,13 +723,13 @@ public class LauncherUI extends JFrame {
                 }
             }
             setProgress(60);
+            // Распаковываем архив прямо в папку лаунчера (installDir)
             unzip(combinedZip, installDir);
             setProgress(100);
-            for (File partFile : downloadedParts) {
-                partFile.delete();
-            }
-            combinedZip.delete();
-            tempDir.delete();
+            // По желанию можно удалить скачанные архивные части и объединённый архив:
+            // for (File partFile : downloadedParts) { partFile.delete(); }
+            // combinedZip.delete();
+            // tempDir.delete();
             return null;
         }
     }
@@ -778,7 +771,7 @@ public class LauncherUI extends JFrame {
         return destFile;
     }
 
-    // Прямое скачивание client.jar
+    // Класс для прямого скачивания client.jar
     private class DirectDownloadTask extends SwingWorker<Void, Integer> {
         private String fileURL;
         private File destinationFile;
