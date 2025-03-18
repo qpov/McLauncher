@@ -2,12 +2,12 @@ package com.launcher.ui;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.datatransfer.StringSelection;
 import java.awt.event.*;
 import java.io.*;
 import java.net.URL;
 import java.net.URLConnection;
-import java.nio.file.Files;
+import java.util.*;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
@@ -194,6 +194,7 @@ public class MainBottomPanel extends JPanel {
             // иначе вызываем стандартное действие (например, запуск игры)
             if ("Установить".equals(playButton.getText())) {
                 playButton.setEnabled(false);
+                System.out.println("Нажата кнопка 'Установить'. Запуск процедуры установки.");
                 downloadAndExtractArchives();
             } else {
                 Window window = SwingUtilities.getWindowAncestor(this);
@@ -256,10 +257,48 @@ public class MainBottomPanel extends JPanel {
         return rightPanel;
     }
     
-    // Новый метод для скачивания и распаковки архивов
+    // Метод для скачивания client.jar (если отсутствует) и затем скачивания и распаковки архивов
     private void downloadAndExtractArchives() {
-        // Определяем список архивов и базовый URL
-        String baseUrl = "https://raw.githubusercontent.com/qpov/QmLauncher/refs/heads/main/data/";
+        // Получаем текущий сервер
+        Object selected = serverComboBox.getSelectedItem();
+        if (selected == null) {
+            System.out.println("Сервер не выбран.");
+            return;
+        }
+        String serverName = selected.toString();
+        File installDir = new File("version", serverName);
+        if (!installDir.exists()) {
+            installDir.mkdirs();
+            System.out.println("Создана директория установки: " + installDir.getAbsolutePath());
+        }
+        File clientJar = new File(installDir, "client.jar");
+        
+        // Скачиваем client.jar, если он отсутствует
+        if (!clientJar.exists()) {
+            System.out.println("Скачивание client.jar...");
+            Window window = SwingUtilities.getWindowAncestor(this);
+            if (window instanceof LauncherUI) {
+                LauncherUI launcher = (LauncherUI) window;
+                // Получаем конфигурацию сервера через публичный метод
+                com.launcher.ServerConfig sc = launcher.getServerConfigByNamePublic(serverName);
+                if (sc != null && sc.download_link != null && !sc.download_link.isEmpty()) {
+                    try {
+                        downloadFile(sc.download_link, clientJar);
+                        System.out.println("client.jar скачан в: " + clientJar.getAbsolutePath());
+                    } catch (IOException ex) {
+                        System.out.println("Ошибка при скачивании client.jar: " + ex.getMessage());
+                        ex.printStackTrace();
+                    }
+                } else {
+                    System.out.println("Не удалось найти URL для client.jar.");
+                }
+            }
+        } else {
+            System.out.println("client.jar уже существует: " + clientJar.getAbsolutePath());
+        }
+        
+        // Далее – скачивание и распаковка архивов, как и раньше.
+        // Массив частей архивов для assets, lib и native.
         String[] archives = {
             "assets.zip.001",
             "assets.zip.002",
@@ -270,9 +309,22 @@ public class MainBottomPanel extends JPanel {
             "native.zip.001"
         };
         
-        // Создаем диалог с прогресс-баром
+        // Группируем по базовому имени (удаляем последний сегмент, например, ".001")
+        Map<String, List<String>> groups = new HashMap<>();
+        for (String archive : archives) {
+            int lastDot = archive.lastIndexOf('.');
+            if (lastDot > 0) {
+                String baseName = archive.substring(0, lastDot);
+                groups.computeIfAbsent(baseName, k -> new ArrayList<>()).add(archive);
+            }
+        }
+        
+        System.out.println("Найдено групп архивов: " + groups.keySet());
+        
+        // Диалог с прогресс-баром; общее количество – число групп
+        int totalGroups = groups.size();
         JDialog dlg = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), "Установка...", true);
-        JProgressBar bar = new JProgressBar(0, archives.length);
+        JProgressBar bar = new JProgressBar(0, totalGroups);
         bar.setStringPainted(true);
         dlg.add(bar);
         dlg.setSize(300, 100);
@@ -281,27 +333,75 @@ public class MainBottomPanel extends JPanel {
         new SwingWorker<Void, Integer>() {
             @Override
             protected Void doInBackground() throws Exception {
-                File launcherDir = new File("."); // корневая папка лаунчера
-                // Для временных файлов можно использовать папку "temp_downloads"
                 File tempDir = new File("temp_downloads");
                 if (!tempDir.exists()) {
                     tempDir.mkdirs();
+                    System.out.println("Создана временная папка: " + tempDir.getAbsolutePath());
                 }
-                int count = 0;
-                for (String archive : archives) {
-                    String fileUrl = baseUrl + archive;
-                    File tempFile = new File(tempDir, archive);
-                    // Скачиваем файл
-                    downloadFile(fileUrl, tempFile);
-                    // Распаковываем скачанный архив
-                    extractZip(tempFile, launcherDir);
-                    // После распаковки удаляем временный файл
-                    tempFile.delete();
-                    count++;
-                    publish(count);
+                
+                int groupCount = 0;
+                // Обрабатываем каждую группу архивов
+                for (Map.Entry<String, List<String>> entry : groups.entrySet()) {
+                    String baseName = entry.getKey();
+                    List<String> parts = entry.getValue();
+                    // Сортируем части по номеру (например, .001, .002, ...)
+                    parts.sort(Comparator.comparingInt(s -> Integer.parseInt(s.substring(s.lastIndexOf('.') + 1))));
+                    System.out.println("Группа " + baseName + " состоит из частей: " + parts);
+                    
+                    // Скачиваем все части
+                    List<File> downloadedParts = new ArrayList<>();
+                    for (String part : parts) {
+                        String fileUrl = "https://raw.githubusercontent.com/qpov/QmLauncher/refs/heads/main/data/" + part;
+                        System.out.println("Начало скачивания: " + fileUrl);
+                        File partFile = new File(tempDir, part);
+                        downloadFile(fileUrl, partFile);
+                        System.out.println("Скачан файл: " + partFile.getAbsolutePath());
+                        downloadedParts.add(partFile);
+                    }
+                    
+                    // Объединяем части в один файл с именем baseName + ".zip"
+                    File combinedZip = new File(tempDir, baseName + ".zip");
+                    try (FileOutputStream fos = new FileOutputStream(combinedZip)) {
+                        for (File partFile : downloadedParts) {
+                            try (FileInputStream fis = new FileInputStream(partFile)) {
+                                byte[] buffer = new byte[4096];
+                                int len;
+                                while ((len = fis.read(buffer)) > 0) {
+                                    fos.write(buffer, 0, len);
+                                }
+                            }
+                        }
+                    }
+                    System.out.println("Объединён файл: " + combinedZip.getAbsolutePath());
+                    
+                    // Распаковываем объединённый архив
+                    System.out.println("Начало распаковки: " + combinedZip.getName());
+                    extractZip(combinedZip, new File("."));
+                    System.out.println("Распаковка завершена для: " + combinedZip.getName());
+                    
+                    // Удаляем временные файлы частей и объединённый архив
+                    for (File partFile : downloadedParts) {
+                        if (partFile.delete()) {
+                            System.out.println("Временный файл удалён: " + partFile.getName());
+                        } else {
+                            System.out.println("Не удалось удалить временный файл: " + partFile.getName());
+                        }
+                    }
+                    if (combinedZip.delete()) {
+                        System.out.println("Объединённый архив удалён: " + combinedZip.getName());
+                    } else {
+                        System.out.println("Не удалось удалить объединённый архив: " + combinedZip.getName());
+                    }
+                    
+                    groupCount++;
+                    publish(groupCount);
                 }
-                // После завершения можно удалить папку temp_downloads, если она пуста
-                tempDir.delete();
+                
+                if (tempDir.delete()) {
+                    System.out.println("Временная папка удалена.");
+                } else {
+                    System.out.println("Не удалось удалить временную папку.");
+                }
                 return null;
             }
 
@@ -309,21 +409,22 @@ public class MainBottomPanel extends JPanel {
             protected void process(java.util.List<Integer> chunks) {
                 int progress = chunks.get(chunks.size() - 1);
                 bar.setValue(progress);
+                System.out.println("Прогресс: " + progress + " из " + totalGroups);
             }
 
             @Override
             protected void done() {
                 dlg.dispose();
                 playButton.setEnabled(true);
-                // После успешной установки меняем кнопку на "Играть"
                 updatePlayButtonText();
+                System.out.println("Установка завершена!");
                 JOptionPane.showMessageDialog(null, "Установка завершена!");
             }
         }.execute();
         dlg.setVisible(true);
     }
     
-    // Метод для скачивания файла по URL в указанный File
+    // Метод для скачивания файла по URL в указанный File с логированием
     private void downloadFile(String fileUrl, File destination) throws IOException {
         URL url = new URL(fileUrl);
         URLConnection connection = url.openConnection();
@@ -337,21 +438,25 @@ public class MainBottomPanel extends JPanel {
                 fos.write(buffer, 0, bytesRead);
             }
         }
+        System.out.println("Файл скачан: " + destination.getName());
     }
     
-    // Метод для распаковки zip-архива в указанную директорию
+    // Метод для распаковки zip-архива в указанную директорию с логированием
     private void extractZip(File zipFile, File targetDir) throws IOException {
         try (ZipInputStream zis = new ZipInputStream(new FileInputStream(zipFile))) {
             ZipEntry entry;
             while ((entry = zis.getNextEntry()) != null) {
+                System.out.println("Распаковка записи: " + entry.getName());
                 File outFile = new File(targetDir, entry.getName());
                 if (entry.isDirectory()) {
-                    outFile.mkdirs();
+                    if (outFile.mkdirs()) {
+                        System.out.println("Создана директория: " + outFile.getAbsolutePath());
+                    }
                 } else {
-                    // Создаем родительские директории, если их нет
                     File parent = outFile.getParentFile();
                     if (!parent.exists()) {
                         parent.mkdirs();
+                        System.out.println("Созданы родительские директории для: " + outFile.getAbsolutePath());
                     }
                     try (FileOutputStream fos = new FileOutputStream(outFile)) {
                         byte[] buffer = new byte[4096];
@@ -359,6 +464,7 @@ public class MainBottomPanel extends JPanel {
                         while ((len = zis.read(buffer)) > 0) {
                             fos.write(buffer, 0, len);
                         }
+                        System.out.println("Файл распакован: " + outFile.getAbsolutePath());
                     }
                 }
                 zis.closeEntry();

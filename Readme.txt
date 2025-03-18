@@ -10,6 +10,7 @@ jar cfm QmLauncher.jar manifest.mf -C bin .
 # Тестовый запуск JAR:
 java -jar QmLauncher.jar
 
+# Компиляция > Создание JAR > Запуск
 javac -cp ".;lib/com/google/code/gson/gson/2.11.0/gson-2.11.0.jar;lib\flatlaf-3.5.4.jar" -d bin src\com\launcher\*.java src\com\launcher\ui\*.java src\com\launcher\ui\settings\*.java; jar cfm QmLauncher.jar manifest.mf -C bin .; java -jar QmLauncher.jar
 
 # Getdown push
