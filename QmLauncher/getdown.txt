@@ -1,26 +1,26 @@
-appbase = https://raw.githubusercontent.com/qpov/QmLauncher/refs/heads/dev
+appbase = https://raw.githubusercontent.com/qpov/QmLauncher/refs/heads/dev/QmLauncher
 
 ui.name = QmLauncher
 
-# Указываем главный JAR как обычный файл (так как он в другой папке)
-file = QmLauncher/QmLauncher.jar
+# Ваш основной jar:
+code = QmLauncher.jar
 
 # Каждую библиотеку указываем отдельно:
 code = lib/com/google/code/gson/gson/2.11.0/gson-2.11.0.jar
 code = lib/flatlaf-3.5.4.jar
 
-# Если есть ресурсы (не на classpath), пишем их в resources:
-resources = resources
+# Указываем, что ресурсы находятся в каталоге выше
+resources = ../resources
 
-# Указываем файлы ресурсов
-file = resources/fonts/Aptos-SemiBold.ttf
-file = resources/img/angles-up-down.png
-file = resources/img/back.png
-file = resources/img/bg.png
-file = resources/img/close.png
-file = resources/img/folder.png
-file = resources/img/minimize.png
-file = resources/img/settings.png
+# Указываем файлы ресурсов (они скачиваются из ../resources/)
+file = ../resources/fonts/Aptos-SemiBold.ttf
+file = ../resources/img/angles-up-down.png
+file = ../resources/img/back.png
+file = ../resources/img/bg.png
+file = ../resources/img/close.png
+file = ../resources/img/folder.png
+file = ../resources/img/minimize.png
+file = ../resources/img/settings.png
 
 # Главный класс приложения
 class = com.launcher.ui.LauncherUI
