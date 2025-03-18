@@ -12,14 +12,14 @@ code = lib/flatlaf-3.5.4.jar
 # Ресурсы
 
 # Файлы ресурсов
-resource = ../resources/fonts/Aptos-SemiBold.ttf
-resource = ../resources/img/angles-up-down.png
-resource = ../resources/img/back.png
-resource = ../resources/img/bg.png
-resource = ../resources/img/close.png
-resource = ../resources/img/folder.png
-resource = ../resources/img/minimize.png
-resource = ../resources/img/settings.png
+resource = resources/fonts/Aptos-SemiBold.ttf
+resource = resources/img/angles-up-down.png
+resource = resources/img/back.png
+resource = resources/img/bg.png
+resource = resources/img/close.png
+resource = resources/img/folder.png
+resource = resources/img/minimize.png
+resource = resources/img/settings.png
 
 # Главный класс приложения
 class = com.launcher.ui.LauncherUI
