@@ -12,14 +12,14 @@ code = lib/flatlaf-3.5.4.jar
 # Если есть ресурсы (не на classpath), пишем их в resources:
 resources = resources
 
-file = A:\Projects\QmLauncher — копия\resources\fonts\Aptos-SemiBold.ttf
-file = A:\Projects\QmLauncher — копия\resources\img\angles-up-down.png
-file = A:\Projects\QmLauncher — копия\resources\img\back.png
-file = A:\Projects\QmLauncher — копия\resources\img\bg.png
-file = A:\Projects\QmLauncher — копия\resources\img\close.png
-file = A:\Projects\QmLauncher — копия\resources\img\folder.png
-file = A:\Projects\QmLauncher — копия\resources\img\minimize.png
-file = A:\Projects\QmLauncher — копия\resources\img\settings.png
+file = resources\fonts\Aptos-SemiBold.ttf
+file = resources\img\angles-up-down.png
+file = resources\img\back.png
+file = resources\img\bg.png
+file = resources\img\close.png
+file = resources\img\folder.png
+file = resources\img\minimize.png
+file = resources\img\settings.png
 
 
 # Главный класс приложения
