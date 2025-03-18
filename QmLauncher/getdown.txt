@@ -9,9 +9,10 @@ code = QmLauncher.jar
 code = lib/com/google/code/gson/gson/2.11.0/gson-2.11.0.jar
 code = lib/flatlaf-3.5.4.jar
 
-# Указываем, что ресурсы находятся в каталоге выше
+# Указываем, что ресурсы внутри QmLauncher
 resources = resources
 
+# Файлы ресурсов
 file = resources/fonts/Aptos-SemiBold.ttf
 file = resources/img/angles-up-down.png
 file = resources/img/back.png
