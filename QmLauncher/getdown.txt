@@ -10,7 +10,6 @@ code = QmLauncher.jar
 # code = lib/flatlaf-3.5.4.jar
 
 # Если есть ресурсы (не на classpath), пишем их в resources:
-resources = src
 resources = resources
 
 
