@@ -5,22 +5,21 @@ ui.name = QmLauncher
 # Главный исполняемый jar
 code = QmLauncher.jar
 
-# Дополнительные библиотеки (если они лежат в QmLauncher/lib)
+# Дополнительные библиотеки
 code = lib/com/google/code/gson/gson/2.11.0/gson-2.11.0.jar
 code = lib/flatlaf-3.5.4.jar
 
 # Ресурсы
-resources = resources
 
-# Явно перечисляем файлы из папки resources
-file = resources/fonts/Aptos-SemiBold.ttf
-file = resources/img/angles-up-down.png
-file = resources/img/back.png
-file = resources/img/bg.png
-file = resources/img/close.png
-file = resources/img/folder.png
-file = resources/img/minimize.png
-file = resources/img/settings.png
+# Файлы ресурсов
+resource = ../resources/fonts/Aptos-SemiBold.ttf
+resource = ../resources/img/angles-up-down.png
+resource = ../resources/img/back.png
+resource = ../resources/img/bg.png
+resource = ../resources/img/close.png
+resource = ../resources/img/folder.png
+resource = ../resources/img/minimize.png
+resource = ../resources/img/settings.png
 
-# Главный класс приложения (точка входа)
+# Главный класс приложения
 class = com.launcher.ui.LauncherUI

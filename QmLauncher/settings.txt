@@ -1,6 +1,0 @@
-#Launcher Settings
-#Tue Mar 18 12:59:33 QYZT 2025
-hideLauncher=true
-lastVersion=
-nickname=Player
-ram=2

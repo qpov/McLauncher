@@ -1,7 +1,0 @@
-#Launcher Settings
-#Tue Mar 18 07:15:15 QYZT 2025
-hideLauncher=false
-lastVersion=Fabric 1.21.4
-nickname=Player
-ram=16
-theme=dark
