@@ -116,6 +116,19 @@ public class MainBottomPanel extends JPanel {
         nicknameField.setSelectedTextColor(Color.BLACK);
         leftPanel.add(nicknameField);
 
+        // Добавляем слушатель, который сохраняет ник при потере фокуса
+        nicknameField.addFocusListener(new FocusAdapter() {
+            @Override
+            public void focusLost(FocusEvent e) {
+                Window window = SwingUtilities.getWindowAncestor(MainBottomPanel.this);
+                if (window instanceof LauncherUI) {
+                    String newNickname = nicknameField.getText().trim();
+                    ((LauncherUI) window).updateNickname(newNickname);
+                    System.out.println("Ник сохранён: " + newNickname);
+                }
+            }
+        });
+
         add(leftPanel, BorderLayout.WEST);
 
         rightPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 16));
@@ -297,8 +310,7 @@ public class MainBottomPanel extends JPanel {
             System.out.println("client.jar уже существует: " + clientJar.getAbsolutePath());
         }
         
-        // Далее – скачивание и распаковка архивов, как и раньше.
-        // Массив частей архивов для assets, lib и native.
+        // Далее – скачивание и распаковка архивов
         String[] archives = {
             "assets.zip.001",
             "assets.zip.002",
@@ -321,7 +333,6 @@ public class MainBottomPanel extends JPanel {
         
         System.out.println("Найдено групп архивов: " + groups.keySet());
         
-        // Диалог с прогресс-баром; общее количество – число групп
         int totalGroups = groups.size();
         JDialog dlg = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), "Установка...", true);
         JProgressBar bar = new JProgressBar(0, totalGroups);
@@ -340,15 +351,12 @@ public class MainBottomPanel extends JPanel {
                 }
                 
                 int groupCount = 0;
-                // Обрабатываем каждую группу архивов
                 for (Map.Entry<String, List<String>> entry : groups.entrySet()) {
                     String baseName = entry.getKey();
                     List<String> parts = entry.getValue();
-                    // Сортируем части по номеру (например, .001, .002, ...)
                     parts.sort(Comparator.comparingInt(s -> Integer.parseInt(s.substring(s.lastIndexOf('.') + 1))));
                     System.out.println("Группа " + baseName + " состоит из частей: " + parts);
                     
-                    // Скачиваем все части
                     List<File> downloadedParts = new ArrayList<>();
                     for (String part : parts) {
                         String fileUrl = "https://raw.githubusercontent.com/qpov/QmLauncher/refs/heads/main/data/" + part;
@@ -359,7 +367,6 @@ public class MainBottomPanel extends JPanel {
                         downloadedParts.add(partFile);
                     }
                     
-                    // Объединяем части в один файл с именем baseName + ".zip"
                     File combinedZip = new File(tempDir, baseName + ".zip");
                     try (FileOutputStream fos = new FileOutputStream(combinedZip)) {
                         for (File partFile : downloadedParts) {
@@ -374,12 +381,10 @@ public class MainBottomPanel extends JPanel {
                     }
                     System.out.println("Объединён файл: " + combinedZip.getAbsolutePath());
                     
-                    // Распаковываем объединённый архив
                     System.out.println("Начало распаковки: " + combinedZip.getName());
                     extractZip(combinedZip, new File("."));
                     System.out.println("Распаковка завершена для: " + combinedZip.getName());
                     
-                    // Удаляем временные файлы частей и объединённый архив
                     for (File partFile : downloadedParts) {
                         if (partFile.delete()) {
                             System.out.println("Временный файл удалён: " + partFile.getName());

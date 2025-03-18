@@ -20,7 +20,7 @@ java -classpath getdown-core-1.8.7.jar com.threerings.getdown.tools.Digester QmL
 java -jar getdown-launcher-1.8.7.jar QmLauncher
 
 # classpath
-String classpath = clientJarPath
+String baseClasspath = clientJar
                     + ";lib/ll/night-config/toml/3.7.4/toml-3.7.4.jar"
                     + ";lib/com/fasterxml/jackson/core/jackson-annotations/2.13.4/jackson-annotations-2.13.4.jar"
                     + ";lib/com/fasterxml/jackson/core/jackson-core/2.13.4/jackson-core-2.13.4.jar"
@@ -169,4 +169,11 @@ String classpath = clientJarPath
                     + ";lib/org/slf4j/slf4j-api/2.0.16/slf4j-api-2.0.16.jar"
                     // + ";lib/org/spongepowered/mixin/0.8.7/mixin-0.8.7.jar"
                     + ";lib/v1/objects/a7e5a6024bfd3cd614625aa05629adf760020304/client.jar";
-
+            String mainClass;
+            if (cfg.fabric_version != null && !cfg.fabric_version.trim().isEmpty()) {
+                mainClass = "net.fabricmc.loader.impl.launch.knot.KnotClient";
+            } else if (cfg.forge_version != null && !cfg.forge_version.trim().isEmpty()) {
+                mainClass = "net.minecraft.client.main.Main";
+            } else {
+                throw new IllegalArgumentException("Неизвестный загрузчик для сервера.");
+            }
