@@ -14,7 +14,6 @@ public class ConfigLoader {
             if (filePath.startsWith("https")) {
                 URL url = new URL(filePath);
                 URLConnection conn = url.openConnection();
-                // Увеличиваем таймаут до 10 секунд
                 conn.setConnectTimeout(10000);
                 conn.setReadTimeout(10000);
                 reader = new InputStreamReader(conn.getInputStream());

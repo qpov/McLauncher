@@ -1,4 +1,4 @@
 Manifest-Version: 1.0
-Main-Class: com.launcher.LauncherUI
+Main-Class: com.launcher.ui.LauncherUI
 Class-Path: lib/com/google/code/gson/gson/2.11.0/gson-2.11.0.jar lib/flatlaf-3.5.4.jar
 
