@@ -61,7 +61,7 @@ public class LauncherUI extends JFrame {
         Container cp = getContentPane();
         cp.setLayout(new BorderLayout());
 
-        titleBarPanel = new TitleBarPanel(this, "QmLauncher", "v1.7.0");
+        titleBarPanel = new TitleBarPanel(this, "QmLauncher", "v1.8.0");
         titleBarPanel.updateBackButton(false, null);
         mainBottomPanel = new MainBottomPanel();
 
