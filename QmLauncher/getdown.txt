@@ -10,17 +10,16 @@ code = lib/com/google/code/gson/gson/2.11.0/gson-2.11.0.jar
 code = lib/flatlaf-3.5.4.jar
 
 # Указываем, что ресурсы находятся в каталоге выше
-resources = ../resources
+resources = resources
 
-# Указываем файлы ресурсов (они скачиваются из ../resources/)
-file = ../resources/fonts/Aptos-SemiBold.ttf
-file = ../resources/img/angles-up-down.png
-file = ../resources/img/back.png
-file = ../resources/img/bg.png
-file = ../resources/img/close.png
-file = ../resources/img/folder.png
-file = ../resources/img/minimize.png
-file = ../resources/img/settings.png
+file = resources/fonts/Aptos-SemiBold.ttf
+file = resources/img/angles-up-down.png
+file = resources/img/back.png
+file = resources/img/bg.png
+file = resources/img/close.png
+file = resources/img/folder.png
+file = resources/img/minimize.png
+file = resources/img/settings.png
 
 # Главный класс приложения
 class = com.launcher.ui.LauncherUI
