@@ -1,4 +1,4 @@
-appbase = https://raw.githubusercontent.com/qpov/QmLauncher/refs/heads/dev/QmLauncher
+appbase = https://raw.githubusercontent.com/qpov/QmLauncher/refs/heads/main/QmLauncher
 
 ui.name = QmLauncher
 
