@@ -2,9 +2,15 @@ package com.launcher.ui;
 
 import javax.swing.*;
 import java.awt.*;
-import java.io.File;
-import java.io.IOException;
+import java.awt.datatransfer.StringSelection;
+import java.awt.event.*;
+import java.io.*;
+import java.net.URL;
+import java.net.URLConnection;
+import java.nio.file.Files;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 
 public class MainBottomPanel extends JPanel {
 
@@ -184,9 +190,16 @@ public class MainBottomPanel extends JPanel {
 
     private void initButtonActions() {
         playButton.addActionListener(e -> {
-            Window window = SwingUtilities.getWindowAncestor(this);
-            if (window instanceof LauncherUI) {
-                ((LauncherUI) window).onPlayClicked();
+            // Если текст кнопки "Установить", запускаем скачивание и распаковку архивов,
+            // иначе вызываем стандартное действие (например, запуск игры)
+            if ("Установить".equals(playButton.getText())) {
+                playButton.setEnabled(false);
+                downloadAndExtractArchives();
+            } else {
+                Window window = SwingUtilities.getWindowAncestor(this);
+                if (window instanceof LauncherUI) {
+                    ((LauncherUI) window).onPlayClicked();
+                }
             }
         });
 
@@ -241,5 +254,115 @@ public class MainBottomPanel extends JPanel {
     
     public JPanel getRightPanel() {
         return rightPanel;
+    }
+    
+    // Новый метод для скачивания и распаковки архивов
+    private void downloadAndExtractArchives() {
+        // Определяем список архивов и базовый URL
+        String baseUrl = "https://raw.githubusercontent.com/qpov/QmLauncher/refs/heads/main/data/";
+        String[] archives = {
+            "assets.zip.001",
+            "assets.zip.002",
+            "assets.zip.003",
+            "assets.zip.004",
+            "lib.zip.001",
+            "lib.zip.002",
+            "native.zip.001"
+        };
+        
+        // Создаем диалог с прогресс-баром
+        JDialog dlg = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), "Установка...", true);
+        JProgressBar bar = new JProgressBar(0, archives.length);
+        bar.setStringPainted(true);
+        dlg.add(bar);
+        dlg.setSize(300, 100);
+        dlg.setLocationRelativeTo(this);
+        
+        new SwingWorker<Void, Integer>() {
+            @Override
+            protected Void doInBackground() throws Exception {
+                File launcherDir = new File("."); // корневая папка лаунчера
+                // Для временных файлов можно использовать папку "temp_downloads"
+                File tempDir = new File("temp_downloads");
+                if (!tempDir.exists()) {
+                    tempDir.mkdirs();
+                }
+                int count = 0;
+                for (String archive : archives) {
+                    String fileUrl = baseUrl + archive;
+                    File tempFile = new File(tempDir, archive);
+                    // Скачиваем файл
+                    downloadFile(fileUrl, tempFile);
+                    // Распаковываем скачанный архив
+                    extractZip(tempFile, launcherDir);
+                    // После распаковки удаляем временный файл
+                    tempFile.delete();
+                    count++;
+                    publish(count);
+                }
+                // После завершения можно удалить папку temp_downloads, если она пуста
+                tempDir.delete();
+                return null;
+            }
+
+            @Override
+            protected void process(java.util.List<Integer> chunks) {
+                int progress = chunks.get(chunks.size() - 1);
+                bar.setValue(progress);
+            }
+
+            @Override
+            protected void done() {
+                dlg.dispose();
+                playButton.setEnabled(true);
+                // После успешной установки меняем кнопку на "Играть"
+                updatePlayButtonText();
+                JOptionPane.showMessageDialog(null, "Установка завершена!");
+            }
+        }.execute();
+        dlg.setVisible(true);
+    }
+    
+    // Метод для скачивания файла по URL в указанный File
+    private void downloadFile(String fileUrl, File destination) throws IOException {
+        URL url = new URL(fileUrl);
+        URLConnection connection = url.openConnection();
+        connection.setConnectTimeout(10000);
+        connection.setReadTimeout(10000);
+        try (InputStream in = connection.getInputStream();
+             FileOutputStream fos = new FileOutputStream(destination)) {
+            byte[] buffer = new byte[4096];
+            int bytesRead;
+            while ((bytesRead = in.read(buffer)) != -1) {
+                fos.write(buffer, 0, bytesRead);
+            }
+        }
+    }
+    
+    // Метод для распаковки zip-архива в указанную директорию
+    private void extractZip(File zipFile, File targetDir) throws IOException {
+        try (ZipInputStream zis = new ZipInputStream(new FileInputStream(zipFile))) {
+            ZipEntry entry;
+            while ((entry = zis.getNextEntry()) != null) {
+                File outFile = new File(targetDir, entry.getName());
+                if (entry.isDirectory()) {
+                    outFile.mkdirs();
+                } else {
+                    // Создаем родительские директории, если их нет
+                    File parent = outFile.getParentFile();
+                    if (!parent.exists()) {
+                        parent.mkdirs();
+                    }
+                    try (FileOutputStream fos = new FileOutputStream(outFile)) {
+                        byte[] buffer = new byte[4096];
+                        int len;
+                        while ((len = zis.read(buffer)) > 0) {
+                            fos.write(buffer, 0, len);
+                        }
+                    }
+                }
+                zis.closeEntry();
+            }
+        }
     }
 }
