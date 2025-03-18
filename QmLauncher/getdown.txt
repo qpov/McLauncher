@@ -1,4 +1,4 @@
-appbase = https://raw.githubusercontent.com/qpov/QmLauncher/main/QmLauncher/
+appbase = https://raw.githubusercontent.com/qpov/QmLauncher/dev/QmLauncher/
 
 ui.name = QmLauncher
 
@@ -10,7 +10,9 @@ code = QmLauncher.jar
 # code = lib/flatlaf-3.5.4.jar
 
 # Если есть ресурсы (не на classpath), пишем их в resources:
-# resources = 
+resources = src
+resources = resources
+
 
 # Главный класс приложения
-class = com.launcher.LauncherUI
+class = com.launcher.ui.LauncherUI

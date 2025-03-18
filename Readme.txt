@@ -1,14 +1,16 @@
 # Компиляция (Windows PowerShell или CMD):
-javac -cp ".;lib/com/google/code/gson/gson/2.11.0/gson-2.11.0.jar;lib\flatlaf-3.5.4.jar" -d bin src\com\launcher\*.java
+javac -cp ".;lib/com/google/code/gson/gson/2.11.0/gson-2.11.0.jar;lib\flatlaf-3.5.4.jar" -d bin src\com\launcher\*.java src\com\launcher\ui\*.java src\com\launcher\ui\settings\*.java
 
 # Запуск:
-java -cp "bin;lib/com/google/code/gson/gson/2.11.0/gson-2.11.0.jar;lib\flatlaf-3.5.4.jar" com.launcher.LauncherUI
+java -cp "bin;lib/com/google/code/gson/gson/2.11.0/gson-2.11.0.jar;lib\flatlaf-3.5.4.jar;src\com\launcher\ui\settings\*.java" com.launcher.ui.LauncherUI
 
 # Создание исполняемого JAR:
 jar cfm QmLauncher.jar manifest.mf -C bin .
 
 # Тестовый запуск JAR:
 java -jar QmLauncher.jar
+
+javac -cp ".;lib/com/google/code/gson/gson/2.11.0/gson-2.11.0.jar;lib\flatlaf-3.5.4.jar" -d bin src\com\launcher\*.java src\com\launcher\ui\*.java src\com\launcher\ui\settings\*.java; jar cfm QmLauncher.jar manifest.mf -C bin .; java -jar QmLauncher.jar
 
 # Getdown push
 java -classpath getdown-core-1.8.7.jar com.threerings.getdown.tools.Digester QmLauncher
@@ -166,3 +168,4 @@ String classpath = clientJarPath
                     + ";lib/org/slf4j/slf4j-api/2.0.16/slf4j-api-2.0.16.jar"
                     // + ";lib/org/spongepowered/mixin/0.8.7/mixin-0.8.7.jar"
                     + ";lib/v1/objects/a7e5a6024bfd3cd614625aa05629adf760020304/client.jar";
+
