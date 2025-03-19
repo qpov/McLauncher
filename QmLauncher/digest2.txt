@@ -1,5 +1,5 @@
 getdown.txt = 9ffca589fcecf0b6a8a861f122b36fd97a180f6e0a23d4642538cbcf12591868
-QmLauncher.jar = e625e2edc6da2fae1e01bfe4e846bc931f8da58bb12a20da485f1ee900132763
+QmLauncher.jar = f6ff8fc6d0dd5eb9ba599411888901a06da7dbf77f8767a2268bd9b16d20ce9a
 lib/com/google/code/gson/gson/2.11.0/gson-2.11.0.jar = 245f6e9a6c0332cd3ff003e9bde1840a637f04473342451c1e064a46b763c8aa
 lib/flatlaf-3.5.4.jar = 8ead75727fcbcebfb2fad99b270215e1fe712ede6b89dd45d492d52ab3ac1a6f
 resources/fonts/Aptos-SemiBold.ttf = 3bd631a7ecb762df8aa7bca31b147db54d441babc83d91b96ba4a69d438880d9
@@ -10,4 +10,4 @@ resources/img/close.png = ecff52568b2fd5ae598f1a380d25c1fe7f2c7904b6ea870f010aa8
 resources/img/folder.png = 4ae93dbd527825fcad94916a121fcd92450c4f09173eaecb43021131dbece92d
 resources/img/minimize.png = f1a57c3353e035b356469f9e5adba196b1adb592d45b41ee5d5e4ba17712b6b3
 resources/img/settings.png = d9d298627dab3f60100a009f46d905d1549341ee3508460d623be11f6c2e77be
-digest2.txt = 72f83236164ab321e7fce4e4f952118627861ff76bbca1cc93f92ac98b430f5c
+digest2.txt = fa340081174390768a44b9117879c8cb97a5dcad36868afca466253192fb9e22

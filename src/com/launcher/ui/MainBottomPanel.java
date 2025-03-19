@@ -310,6 +310,18 @@ public class MainBottomPanel extends JPanel {
             System.out.println("client.jar уже существует: " + clientJar.getAbsolutePath());
         }
         
+        // Если в корневой папке уже существуют папки assets и native – пропускаем скачивание архивов
+        File assetsFolder = new File("assets");
+        File nativeFolder = new File("native");
+        if (assetsFolder.exists() && assetsFolder.isDirectory() &&
+            nativeFolder.exists() && nativeFolder.isDirectory()) {
+            System.out.println("Папки assets и native уже существуют, пропускаем скачивание архивов.");
+            playButton.setEnabled(true);
+            updatePlayButtonText();
+            JOptionPane.showMessageDialog(null, "Установка завершена!");
+            return;
+        }
+        
         // Далее – скачивание и распаковка архивов
         String[] archives = {
             "assets.zip.001",

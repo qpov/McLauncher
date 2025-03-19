@@ -10,16 +10,19 @@ jar cfm QmLauncher.jar manifest.mf -C bin .
 # Тестовый запуск JAR:
 java -jar QmLauncher.jar
 
-# Компиляция > Создание JAR > Запуск
+# Компиляция > Создание JAR > Запуск:
 javac -cp ".;lib/com/google/code/gson/gson/2.11.0/gson-2.11.0.jar;lib\flatlaf-3.5.4.jar" -d bin src\com\launcher\*.java src\com\launcher\ui\*.java src\com\launcher\ui\settings\*.java; jar cfm QmLauncher.jar manifest.mf -C bin .; java -jar QmLauncher.jar
 
-# Getdown push
+# Компиляция > Создание JAR:
+javac -cp ".;lib/com/google/code/gson/gson/2.11.0/gson-2.11.0.jar;lib\flatlaf-3.5.4.jar" -d bin src\com\launcher\*.java src\com\launcher\ui\*.java src\com\launcher\ui\settings\*.java; jar cfm QmLauncher.jar manifest.mf -C bin .
+
+# Getdown push:
 java -classpath getdown-core-1.8.7.jar com.threerings.getdown.tools.Digester QmLauncher
 
-# Getdown install
+# Getdown install:
 java -jar getdown-launcher-1.8.7.jar QmLauncher
 
-# classpath
+# classpath:
 String baseClasspath = clientJar
                     + ";lib/ll/night-config/toml/3.7.4/toml-3.7.4.jar"
                     + ";lib/com/fasterxml/jackson/core/jackson-annotations/2.13.4/jackson-annotations-2.13.4.jar"
